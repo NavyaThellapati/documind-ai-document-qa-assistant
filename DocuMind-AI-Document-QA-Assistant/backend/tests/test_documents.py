@@ -37,6 +37,6 @@ def test_duplicate_upload_not_reprocessed(client, auth_headers):
 
 def test_user_access_isolation(client, auth_headers):
     doc = upload_txt(client, auth_headers).json()["document"]
-    other = client.post("/api/auth/register", json={"email": "other@example.com", "password": "strongpass123"}).json()["access_token"]
+    other = client.post("/api/auth/register", json={"email": "other@example.com", "password": "Strongpass123"}).json()["access_token"]
     response = client.get(f"/api/documents/{doc['id']}", headers={"Authorization": f"Bearer {other}"})
     assert response.status_code == 404

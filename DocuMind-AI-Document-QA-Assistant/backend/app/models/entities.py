@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import uuid4
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 
@@ -26,6 +26,20 @@ class User(Base, TimestampMixin):
 
     documents: Mapped[list["Document"]] = relationship(back_populates="owner", cascade="all, delete-orphan")
     conversations: Mapped[list["Conversation"]] = relationship(back_populates="owner", cascade="all, delete-orphan")
+    refresh_tokens: Mapped[list["RefreshToken"]] = relationship(back_populates="owner", cascade="all, delete-orphan")
+
+
+class RefreshToken(Base, TimestampMixin):
+    __tablename__ = "refresh_tokens"
+    __table_args__ = (Index("ix_refresh_tokens_user_expires", "user_id", "expires_at"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uuid_str)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    owner: Mapped[User] = relationship(back_populates="refresh_tokens")
 
 
 class Document(Base, TimestampMixin):
@@ -46,6 +60,9 @@ class Document(Base, TimestampMixin):
     status: Mapped[str] = mapped_column(String(40), default="uploaded", index=True, nullable=False)
     error_message: Mapped[str | None] = mapped_column(Text)
     chunk_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    page_count: Mapped[int | None] = mapped_column(Integer)
+    embedding_status: Mapped[str] = mapped_column(String(40), default="pending", nullable=False)
+    processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     owner: Mapped[User] = relationship(back_populates="documents")
 
@@ -85,7 +102,7 @@ class Source(Base, TimestampMixin):
     page_number: Mapped[int | None] = mapped_column(Integer)
     chunk_number: Mapped[int] = mapped_column(Integer, nullable=False)
     excerpt: Mapped[str] = mapped_column(Text, nullable=False)
-    relevance_score: Mapped[float | None] = mapped_column()
+    relevance_score: Mapped[float | None] = mapped_column(Float)
 
     message: Mapped[Message] = relationship(back_populates="sources")
 

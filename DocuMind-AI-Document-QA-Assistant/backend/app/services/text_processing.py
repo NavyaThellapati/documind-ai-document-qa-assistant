@@ -46,6 +46,35 @@ def extract_text_sections(path: Path, suffix: str) -> list[TextSection]:
     raise ValueError("Unsupported file type.")
 
 
+def estimate_page_count(sections: list[TextSection]) -> int | None:
+    page_numbers = [section.page_number for section in sections if section.page_number]
+    if page_numbers:
+        return max(page_numbers)
+    total_chars = sum(len(section.text) for section in sections)
+    if total_chars == 0:
+        return None
+    return max(1, round(total_chars / 2400))
+
+
+def search_sections(sections: list[TextSection], query: str, max_results: int = 8) -> list[tuple[int | None, str]]:
+    terms = [term.lower() for term in query.split() if len(term) > 2]
+    if not terms:
+        return []
+    matches: list[tuple[int, int | None, str]] = []
+    for section in sections:
+        lowered = section.text.lower()
+        score = sum(lowered.count(term) for term in terms)
+        if score == 0:
+            continue
+        first_index = min((lowered.find(term) for term in terms if term in lowered), default=0)
+        start = max(0, first_index - 120)
+        end = min(len(section.text), first_index + 380)
+        excerpt = clean_text(section.text[start:end])
+        matches.append((score, section.page_number, excerpt))
+    matches.sort(reverse=True, key=lambda item: item[0])
+    return [(page, excerpt) for _, page, excerpt in matches[:max_results]]
+
+
 def split_sections(sections: list[TextSection], chunk_size: int, chunk_overlap: int) -> list[Chunk]:
     if chunk_overlap >= chunk_size:
         raise ValueError("Chunk overlap must be smaller than chunk size.")

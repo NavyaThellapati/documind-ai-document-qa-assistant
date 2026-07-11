@@ -4,7 +4,7 @@ from pydantic import BaseModel, EmailStr, Field
 
 class UserCreate(BaseModel):
     email: EmailStr
-    password: str = Field(min_length=8, max_length=128)
+    password: str = Field(min_length=10, max_length=128)
     full_name: str | None = Field(default=None, max_length=255)
 
 
@@ -24,5 +24,14 @@ class UserRead(BaseModel):
 
 class TokenResponse(BaseModel):
     access_token: str
+    refresh_token: str
     token_type: str = "bearer"
     user: UserRead
+
+
+class RefreshRequest(BaseModel):
+    refresh_token: str = Field(min_length=32)
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr

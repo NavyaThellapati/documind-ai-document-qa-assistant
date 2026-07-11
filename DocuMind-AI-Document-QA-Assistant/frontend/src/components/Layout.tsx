@@ -1,9 +1,11 @@
-import { BookOpen, FileText, History, LogOut, MessageSquare, Upload, UserRound } from "lucide-react";
+import { BookOpen, FileText, History, LogOut, MessageSquare, Moon, Sun, Upload, UserRound } from "lucide-react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import { useTheme } from "../contexts/ThemeContext";
 
 export function Layout() {
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   return (
     <div className="app-shell">
@@ -25,6 +27,7 @@ export function Layout() {
             <strong>{user?.full_name || user?.email}</strong>
             <span>Ask questions grounded in your uploaded documents.</span>
           </div>
+          <button className="icon-button" title="Toggle theme" onClick={toggleTheme}>{theme === "light" ? <Moon size={18} /> : <Sun size={18} />}</button>
         </header>
         <Outlet />
       </main>

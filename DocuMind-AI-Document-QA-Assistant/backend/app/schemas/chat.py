@@ -18,6 +18,7 @@ class SourceRead(BaseModel):
     chunk_number: int
     excerpt: str
     relevance_score: float | None = None
+    highlighted_excerpt: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -61,3 +62,17 @@ class AskResponse(BaseModel):
     message_id: str
     answer: str
     sources: list[SourceRead]
+    confidence_score: float | None = None
+
+
+class DashboardSummary(BaseModel):
+    total_documents: int
+    processed_documents: int
+    processing_documents: int
+    failed_documents: int
+    total_chats: int
+    questions_asked: int
+    storage_used_bytes: int
+    recent_documents: list[dict]
+    recent_conversations: list[dict]
+    ai_usage_summary: dict

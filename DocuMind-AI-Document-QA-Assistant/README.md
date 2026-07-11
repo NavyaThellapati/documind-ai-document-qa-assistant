@@ -1,84 +1,84 @@
 # DocuMind - AI Document Q&A Assistant
 
-DocuMind is a production-style Retrieval-Augmented Generation portfolio project. Users can register, upload PDF/TXT/DOCX documents, index document chunks into ChromaDB, ask grounded questions, review citations, save conversations, and submit answer feedback.
-
-## Features
-
-- JWT authentication with hashed passwords and protected user-specific endpoints
-- PDF, TXT, and DOCX upload with file validation, duplicate detection, extraction, chunking, and processing status
-- Sentence-Transformers embeddings stored in ChromaDB with user and document metadata
-- RAG question-answering through OpenAI by default, with optional Llama 3 via Ollama-compatible chat endpoint
-- Prompt-injection protection through strict system prompting and document text treated as untrusted data
-- Conversation history, message source citations, answer feedback, document deletion, search, filter, and reprocessing
-- React + TypeScript frontend with dashboard, upload, document management, chat, history, and profile pages
-- PostgreSQL schema managed by SQLAlchemy and Alembic
-- Pytest backend coverage with mocked LLM/vector dependencies
-- Docker Compose and GitHub Actions CI
+DocuMind is a portfolio-grade AI SaaS application for private document question answering. Users upload PDF, TXT, and DOCX files, DocuMind extracts and chunks the content, stores embeddings in ChromaDB, and answers questions only from the uploaded material with citations.
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-  U["User"] --> FE["React TypeScript Frontend"]
-  FE --> API["FastAPI REST API"]
-  API --> PG["PostgreSQL"]
+  U["User"] --> FE["React + TypeScript SaaS UI"]
+  FE --> API["FastAPI REST + Streaming API"]
+  API --> AUTH["JWT + Refresh Tokens"]
+  API --> PG["PostgreSQL / SQLAlchemy"]
   API --> FS["Local Upload Storage"]
-  API --> EX["Text Extraction and Chunking"]
-  EX --> EMB["Sentence-Transformers Embeddings"]
-  EMB --> CH["ChromaDB Vector Store"]
-  API --> RET["Retriever"]
-  RET --> CH
-  RET --> LLM["OpenAI API or Llama 3"]
+  API --> PARSE["PDF / DOCX / TXT Extraction"]
+  PARSE --> CHUNK["Chunking + Metadata"]
+  CHUNK --> EMB["Sentence-Transformers"]
+  EMB --> CHROMA["ChromaDB"]
+  API --> RAG["Hybrid Retrieval + Context Filtering"]
+  RAG --> LLM["OpenAI or Llama 3"]
   LLM --> API
   API --> FE
 ```
 
-## Technology Stack
+## Main Features
 
-Backend: Python, FastAPI, SQLAlchemy, Alembic, PostgreSQL, LangChain dependencies, ChromaDB, Sentence-Transformers, OpenAI, Pytest.
+- Registration, login, protected routes, JWT access tokens, refresh tokens, logout, and forgot-password placeholder
+- User-specific document access and chat history isolation
+- PDF, TXT, and DOCX uploads with extension, MIME, size, empty-file, duplicate, and extraction validation
+- Document metadata: size, pages, chunk count, processing status, embedding status, upload date, processed date
+- Local file storage for development with a service boundary that can be replaced by cloud storage
+- Sentence-Transformers embeddings and persistent ChromaDB vector storage
+- Hybrid retrieval scoring using vector relevance plus keyword overlap
+- Prompt-injection-resistant RAG prompt that treats documents as untrusted data
+- Exact unsupported-answer behavior: `I could not find this information in the uploaded documents.`
+- Chat conversations, message history, source citations, confidence score, highlighted excerpts, feedback
+- Streaming chat endpoint and ChatGPT-style frontend with markdown rendering, copy, regenerate, rename, and delete
+- Modern responsive SaaS dashboard with light/dark mode, toasts, loading skeletons, empty states, and polished navigation
+- Detailed health endpoint reporting database, Chroma, OpenAI configuration, and disk usage
+- Alembic migrations, Pytest backend tests, Vitest frontend tests, Dockerfiles, Docker Compose, and GitHub Actions
 
-Frontend: React, TypeScript, Vite, React Router, lucide-react.
+## Tech Stack
 
-Operations: Docker, Docker Compose, GitHub Actions.
+Backend:
+- Python, FastAPI, Pydantic, SQLAlchemy, Alembic
+- PostgreSQL for application data
+- ChromaDB for vector persistence
+- Sentence-Transformers for embeddings
+- OpenAI API by default, optional Llama 3 via Ollama-compatible chat API
+- Pytest for backend tests
 
-## Local Setup
+Frontend:
+- React, TypeScript, Vite
+- React Router
+- react-markdown + remark-gfm
+- lucide-react
+- Vitest + Testing Library
 
-1. Create environment file:
+Operations:
+- Docker, Docker Compose
+- GitHub Actions CI
+
+## Local Installation
+
+Create an environment file:
 
 ```bash
 cp .env.example .env
 ```
 
-2. Start PostgreSQL with Docker:
-
-```bash
-docker compose up postgres
-```
-
-3. Install backend dependencies:
+Install and run the backend:
 
 ```bash
 cd backend
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-```
-
-4. Run migrations:
-
-```bash
 alembic upgrade head
-```
-
-5. Start the API:
-
-```bash
 uvicorn app.main:app --reload
 ```
 
-FastAPI documentation is available at [http://localhost:8000/api/docs](http://localhost:8000/api/docs).
-
-6. Start the frontend:
+Install and run the frontend:
 
 ```bash
 cd frontend
@@ -86,7 +86,46 @@ npm install
 npm run dev
 ```
 
-The frontend runs at [http://localhost:5173](http://localhost:5173).
+Local URLs:
+- Frontend: [http://localhost:5173](http://localhost:5173)
+- Backend: [http://localhost:8000](http://localhost:8000)
+- Swagger / OpenAPI: [http://localhost:8000/api/docs](http://localhost:8000/api/docs)
+- Health: [http://localhost:8000/api/health](http://localhost:8000/api/health)
+
+## Environment Variables
+
+See `.env.example` for the full list.
+
+Important values:
+
+- `DATABASE_URL`
+- `JWT_SECRET`
+- `OPENAI_API_KEY`
+- `LLM_PROVIDER` (`openai` or `llama`)
+- `OPENAI_MODEL`
+- `LLAMA_BASE_URL`
+- `LLAMA_MODEL`
+- `EMBEDDING_MODEL`
+- `CHUNK_SIZE`
+- `CHUNK_OVERLAP`
+- `RETRIEVAL_TOP_K`
+- `MIN_RELEVANCE_SCORE`
+- `MAX_UPLOAD_SIZE_MB`
+- `UPLOAD_DIR`
+- `CHROMA_DIR`
+
+If `OPENAI_API_KEY` is empty, DocuMind uses a deterministic extractive fallback for local demos. Production deployments should configure a real LLM provider.
+
+## Database Migrations
+
+```bash
+cd backend
+alembic upgrade head
+```
+
+Current migrations:
+- `0001_initial`: users, documents, conversations, messages, sources, feedback
+- `0002_refresh_document_metadata`: refresh tokens, page count, embedding status, processed timestamp
 
 ## Docker
 
@@ -96,105 +135,108 @@ docker compose up --build
 ```
 
 Services:
+- `frontend`: React app served by Nginx
+- `backend`: FastAPI app
+- `postgres`: PostgreSQL database
+- `chroma`: ChromaDB service with persistent volume
 
-- Frontend: [http://localhost:5173](http://localhost:5173)
-- Backend: [http://localhost:8000](http://localhost:8000)
-- API docs: [http://localhost:8000/api/docs](http://localhost:8000/api/docs)
-- Postgres: `localhost:5432`
-
-## Configuration
-
-Important environment variables:
-
-- `DATABASE_URL`
-- `JWT_SECRET`
-- `OPENAI_API_KEY`
-- `LLM_PROVIDER` (`openai` or `llama`)
-- `EMBEDDING_MODEL`
-- `CHUNK_SIZE`
-- `CHUNK_OVERLAP`
-- `RETRIEVAL_TOP_K`
-- `MAX_UPLOAD_SIZE_MB`
-- `UPLOAD_DIR`
-- `CHROMA_DIR`
-
-If `OPENAI_API_KEY` is not set, the backend uses a deterministic extractive fallback so the app can still be demonstrated locally.
+The backend currently uses embedded Chroma persistence through `CHROMA_DIR`; the Chroma service is included for deployment evolution and operational parity.
 
 ## Testing
 
-Backend tests mock external LLM and vector calls:
+Backend:
 
 ```bash
 cd backend
 pytest
 ```
 
-Frontend build check:
+Frontend:
 
 ```bash
 cd frontend
+npm run lint
+npm test
 npm run build
 ```
 
+External LLM and vector calls are mocked in backend tests so the suite runs without API credits.
+
 ## Evaluation
 
-The evaluation module runs a small sample set and reports metrics from actual outputs:
+Run the sample evaluation:
 
 ```bash
 cd backend
 python -m evaluation.evaluate
 ```
 
-It measures correct document retrieval, source attribution presence, unsupported-answer rate, and response time. Use these generated values if presenting performance metrics.
+The generated report is stored at `backend/evaluation/evaluation_report.json`. Only use metrics from this actual report; do not invent performance claims.
 
 ## Sample Documents
 
-Harmless demo files are included in `backend/sample_documents`:
-
+Demo documents are included under `backend/sample_documents`:
 - Employee handbook
 - Product user guide
 - University policy
 - Healthcare portal FAQ
 
-## API Endpoints
+## API Highlights
 
+Auth:
 - `POST /api/auth/register`
 - `POST /api/auth/login`
+- `POST /api/auth/refresh`
+- `POST /api/auth/logout`
+- `POST /api/auth/forgot-password`
 - `GET /api/auth/me`
+
+Documents:
 - `POST /api/documents/upload`
 - `GET /api/documents`
 - `GET /api/documents/{document_id}`
-- `DELETE /api/documents/{document_id}`
+- `GET /api/documents/{document_id}/download`
+- `GET /api/documents/{document_id}/search`
 - `POST /api/documents/{document_id}/reprocess`
+- `DELETE /api/documents/{document_id}`
+
+Chat:
 - `POST /api/chat/conversations`
 - `GET /api/chat/conversations`
 - `GET /api/chat/conversations/{conversation_id}`
 - `PATCH /api/chat/conversations/{conversation_id}`
 - `DELETE /api/chat/conversations/{conversation_id}`
 - `POST /api/chat/ask`
+- `POST /api/chat/ask/stream`
+
+Feedback:
 - `POST /api/feedback`
+
+Dashboard:
+- `GET /api/dashboard/summary`
 
 ## Screenshots
 
-Add screenshots here after running the app locally:
-
+Add screenshots after running locally:
 - Dashboard
-- Upload flow
-- Document detail
+- Upload progress
+- Document detail and search
 - Chat with citations
-- Chat history
+- Dark mode
 
 ## Known Limitations
 
-- Uploads are local filesystem based for development.
-- Document processing is synchronous to keep local setup simple.
-- The fallback answer mode is extractive and intended for offline demos only.
-- Basic in-memory rate limiting resets when the API process restarts.
+- Document processing is still synchronous inside the API process; a production system should move this to a background worker.
+- The streaming endpoint streams the final generated text to the UI after retrieval and model completion; direct provider token streaming can be added next.
+- Local filesystem storage is used for development.
+- In-memory rate limiting resets on process restart.
+- Docker could not be executed in the current development environment, so image builds should be verified on a machine with Docker installed.
 
-## Future Improvements
+## Roadmap
 
-- Background workers for large document processing
+- Background worker queue for document processing
+- Direct provider token streaming
 - Cloud object storage adapter
-- Streaming model responses
 - Organization/team workspaces
-- Admin analytics for feedback and retrieval quality
+- Admin analytics for retrieval quality and feedback
+- Stronger observability with traces and metrics

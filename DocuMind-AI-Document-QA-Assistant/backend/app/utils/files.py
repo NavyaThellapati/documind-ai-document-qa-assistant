@@ -9,6 +9,7 @@ ALLOWED_CONTENT_TYPES = {
     "application/pdf",
     "text/plain",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/octet-stream",
 }
 
 
@@ -24,6 +25,21 @@ def validate_extension(filename: str) -> str:
     if suffix not in ALLOWED_EXTENSIONS:
         raise ValueError("Unsupported file type. Please upload a PDF, TXT, or DOCX file.")
     return suffix
+
+
+def validate_content_type(content_type: str | None, suffix: str) -> None:
+    if not content_type:
+        return
+    normalized = content_type.split(";")[0].strip().lower()
+    if normalized not in ALLOWED_CONTENT_TYPES:
+        raise ValueError("Unsupported MIME type. Please upload a PDF, TXT, or DOCX file.")
+    expected = {
+        ".pdf": "application/pdf",
+        ".txt": "text/plain",
+        ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    }
+    if normalized != "application/octet-stream" and expected.get(suffix) != normalized:
+        raise ValueError("File extension and MIME type do not match.")
 
 
 def sha256_bytes(data: bytes) -> str:

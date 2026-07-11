@@ -25,7 +25,7 @@ export function Register() {
         {error && <div className="error">{error}</div>}
         <label>Name<input value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} /></label>
         <label>Email<input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} type="email" required /></label>
-        <label>Password<input value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} type="password" minLength={8} required /></label>
+        <label>Password<input value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} type="password" minLength={10} required /><small>Use at least 10 characters with uppercase, lowercase, and a number.</small></label>
         <button>Create account</button>
         <span>Already registered? <Link to="/login">Sign in</Link></span>
       </form>

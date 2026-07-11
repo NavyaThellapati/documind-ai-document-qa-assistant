@@ -7,6 +7,7 @@ type AuthContextValue = {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, fullName?: string) => Promise<void>;
   logout: () => void;
+  forgotPassword: (email: string) => Promise<string>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -29,15 +30,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     async login(email, password) {
       const result = await api.login({ email, password });
       localStorage.setItem("documind_token", result.access_token);
+      localStorage.setItem("documind_refresh_token", result.refresh_token);
       setUser(result.user);
     },
     async register(email, password, fullName) {
       const result = await api.register({ email, password, full_name: fullName });
       localStorage.setItem("documind_token", result.access_token);
+      localStorage.setItem("documind_refresh_token", result.refresh_token);
       setUser(result.user);
     },
+    async forgotPassword(email) {
+      const result = await api.forgotPassword(email);
+      return result.message;
+    },
     logout() {
+      const refreshToken = localStorage.getItem("documind_refresh_token");
+      if (refreshToken) api.logout(refreshToken).catch(() => undefined);
       localStorage.removeItem("documind_token");
+      localStorage.removeItem("documind_refresh_token");
       setUser(null);
     },
   }), [user, loading]);

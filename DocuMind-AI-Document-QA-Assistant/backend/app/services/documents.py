@@ -6,15 +6,16 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.models import Document, User
-from app.services.text_processing import extract_text_sections, split_sections
+from app.services.text_processing import estimate_page_count, extract_text_sections, split_sections
 from app.services.vector_store import get_vector_store
-from app.utils.files import sanitize_filename, sha256_bytes, validate_extension
+from app.utils.files import sanitize_filename, sha256_bytes, validate_content_type, validate_extension
 
 
 async def save_and_process_upload(db: Session, user: User, file: UploadFile) -> tuple[Document, bool]:
     settings = get_settings()
     try:
         suffix = validate_extension(file.filename or "")
+        validate_content_type(file.content_type, suffix)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     data = await file.read()
@@ -43,6 +44,7 @@ async def save_and_process_upload(db: Session, user: User, file: UploadFile) -> 
         file_size=len(data),
         content_hash=content_hash,
         status="processing",
+        embedding_status="pending",
     )
     db.add(document)
     try:
@@ -61,10 +63,12 @@ async def save_and_process_upload(db: Session, user: User, file: UploadFile) -> 
 def process_document(db: Session, document: Document) -> Document:
     settings = get_settings()
     document.status = "processing"
+    document.embedding_status = "processing"
     document.error_message = None
     db.commit()
     try:
         sections = extract_text_sections(Path(document.file_path), Path(document.original_filename).suffix.lower())
+        document.page_count = estimate_page_count(sections)
         chunks = split_sections(sections, settings.chunk_size, settings.chunk_overlap)
         if not chunks:
             raise ValueError("No readable text was found in this document.")
@@ -72,10 +76,15 @@ def process_document(db: Session, document: Document) -> Document:
         vector_store.delete_document(document.user_id, document.id)
         vector_store.upsert_document_chunks(document.user_id, document.id, document.original_filename, chunks)
         document.status = "processed"
+        document.embedding_status = "ready"
         document.chunk_count = len(chunks)
         document.error_message = None
+        from datetime import datetime, timezone
+
+        document.processed_at = datetime.now(timezone.utc)
     except Exception as exc:
         document.status = "failed"
+        document.embedding_status = "failed"
         document.error_message = str(exc)
         document.chunk_count = 0
     db.commit()

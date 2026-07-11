@@ -10,6 +10,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.core.database import Base, engine
+from app.core.rate_limit import rate_limiter
 from app.main import app
 
 
@@ -47,7 +48,7 @@ class FakeVectorStore:
 class FakeLLM:
     async def answer(self, question, chunks):
         if not chunks or "unknown" in question.lower():
-            return "I could not find that answer in the uploaded documents."
+            return "I could not find this information in the uploaded documents."
         return f"{chunks[0].text[:120]} [1]"
 
 
@@ -55,6 +56,7 @@ class FakeLLM:
 def reset_db(monkeypatch):
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
+    rate_limiter._hits.clear()
     fake_store = FakeVectorStore()
     monkeypatch.setattr("app.services.documents.get_vector_store", lambda: fake_store)
     monkeypatch.setattr("app.api.chat.get_vector_store", lambda: fake_store)
@@ -77,6 +79,6 @@ def client():
 
 @pytest.fixture
 def auth_headers(client):
-    response = client.post("/api/auth/register", json={"email": "user@example.com", "password": "strongpass123", "full_name": "Test User"})
+    response = client.post("/api/auth/register", json={"email": "user@example.com", "password": "Strongpass123", "full_name": "Test User"})
     token = response.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}

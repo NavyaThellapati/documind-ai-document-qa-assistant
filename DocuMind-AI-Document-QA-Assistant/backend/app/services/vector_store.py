@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import re
 
 from app.core.config import get_settings
 from app.services.embeddings import get_embedding_service
@@ -13,6 +14,7 @@ class RetrievedChunk:
     page_number: int | None
     chunk_number: int
     relevance_score: float | None
+    keyword_score: float = 0.0
 
 
 class VectorStoreService:
@@ -58,7 +60,12 @@ class VectorStoreService:
             include=["documents", "metadatas", "distances"],
         )
         retrieved: list[RetrievedChunk] = []
+        terms = {term for term in re.findall(r"[a-zA-Z0-9]+", question.lower()) if len(term) > 2}
         for text, metadata, distance in zip(result.get("documents", [[]])[0], result.get("metadatas", [[]])[0], result.get("distances", [[]])[0]):
+            keyword_hits = sum(1 for term in terms if term in text.lower())
+            keyword_score = keyword_hits / max(len(terms), 1)
+            vector_score = 1 - float(distance) if distance is not None else 0.0
+            hybrid_score = round((vector_score * 0.8) + (keyword_score * 0.2), 4)
             retrieved.append(
                 RetrievedChunk(
                     text=text,
@@ -66,10 +73,12 @@ class VectorStoreService:
                     document_name=metadata["document_name"],
                     page_number=metadata.get("page_number") or None,
                     chunk_number=int(metadata["chunk_number"]),
-                    relevance_score=round(1 - float(distance), 4) if distance is not None else None,
+                    relevance_score=hybrid_score,
+                    keyword_score=round(keyword_score, 4),
                 )
             )
-        return retrieved
+        min_score = settings.min_relevance_score
+        return [item for item in sorted(retrieved, key=lambda chunk: chunk.relevance_score or 0, reverse=True) if (item.relevance_score or 0) >= min_score]
 
 
 _vector_store: VectorStoreService | None = None

@@ -1,12 +1,16 @@
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from pathlib import Path
+
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.models import Document, User
-from app.schemas.documents import DocumentList, DocumentRead, DocumentUploadResponse
+from app.schemas.documents import DocumentList, DocumentRead, DocumentSearchResponse, DocumentSearchResult, DocumentUploadResponse
 from app.services.documents import delete_document as delete_document_service
 from app.services.documents import process_document, save_and_process_upload
+from app.services.text_processing import extract_text_sections, search_sections
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
@@ -29,6 +33,10 @@ async def upload_document(file: UploadFile = File(...), db: Session = Depends(ge
 def list_documents(
     search: str | None = None,
     status_filter: str | None = None,
+    sort_by: str = Query(default="created_at", pattern="^(created_at|updated_at|original_filename|file_size|status)$"),
+    sort_dir: str = Query(default="desc", pattern="^(asc|desc)$"),
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -37,7 +45,10 @@ def list_documents(
         query = query.filter(Document.original_filename.ilike(f"%{search}%"))
     if status_filter:
         query = query.filter(Document.status == status_filter)
-    return DocumentList(documents=query.order_by(Document.created_at.desc()).all())
+    sort_column = getattr(Document, sort_by)
+    if sort_dir == "desc":
+        sort_column = sort_column.desc()
+    return DocumentList(documents=query.order_by(sort_column).offset(offset).limit(limit).all())
 
 
 @router.get("/{document_id}", response_model=DocumentRead)
@@ -55,3 +66,20 @@ def delete_document(document_id: str, db: Session = Depends(get_db), current_use
 def reprocess_document(document_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     document = get_owned_document(db, current_user, document_id)
     return process_document(db, document)
+
+
+@router.get("/{document_id}/download")
+def download_document(document_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    document = get_owned_document(db, current_user, document_id)
+    path = Path(document.file_path)
+    if not path.exists():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stored file was not found.")
+    return FileResponse(path, filename=document.original_filename, media_type=document.content_type)
+
+
+@router.get("/{document_id}/search", response_model=DocumentSearchResponse)
+def search_document(document_id: str, query: str = Query(min_length=2, max_length=200), db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    document = get_owned_document(db, current_user, document_id)
+    sections = extract_text_sections(Path(document.file_path), Path(document.original_filename).suffix.lower())
+    results = [DocumentSearchResult(page_number=page, excerpt=excerpt) for page, excerpt in search_sections(sections, query)]
+    return DocumentSearchResponse(query=query, results=results)
