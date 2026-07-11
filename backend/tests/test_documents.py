@@ -36,6 +36,14 @@ def test_duplicate_upload_not_reprocessed(client, auth_headers):
     assert second.json()["duplicate"] is True
 
 
+def test_same_name_different_content_gets_unique_storage_path(client, auth_headers):
+    first = upload_txt(client, auth_headers, name="policy.txt", text="First policy text.")
+    second = upload_txt(client, auth_headers, name="policy.txt", text="Second policy text.")
+    assert first.status_code == 201
+    assert second.status_code == 201
+    assert first.json()["document"]["id"] != second.json()["document"]["id"]
+
+
 def test_user_access_isolation(client, auth_headers):
     doc = upload_txt(client, auth_headers).json()["document"]
     other = client.post("/api/auth/register", json={"email": "other@example.com", "password": "Strongpass123"}).json()["access_token"]

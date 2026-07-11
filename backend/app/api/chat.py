@@ -1,7 +1,6 @@
+import asyncio
 import json
 import re
-
-import asyncio
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
@@ -14,7 +13,7 @@ from app.core.database import get_db
 from app.core.rate_limit import rate_limiter
 from app.models import Conversation, Document, Message, Source, User
 from app.schemas.chat import AskRequest, AskResponse, ConversationCreate, ConversationRead, ConversationSummary, ConversationUpdate, SourceRead
-from app.services.llm import get_llm_service
+from app.services.llm import UNSUPPORTED_ANSWER, get_llm_service
 from app.services.vector_store import get_vector_store
 
 router = APIRouter(prefix="/chat", tags=["chat"])
@@ -71,18 +70,19 @@ async def answer_and_persist(payload: AskRequest, db: Session, current_user: Use
     db.flush()
 
     source_models: list[Source] = []
-    for chunk in chunks:
-        source = Source(
-            message_id=message.id,
-            document_id=chunk.document_id,
-            document_name=chunk.document_name,
-            page_number=chunk.page_number,
-            chunk_number=chunk.chunk_number,
-            excerpt=chunk.text[:500],
-            relevance_score=chunk.relevance_score,
-        )
-        db.add(source)
-        source_models.append(source)
+    if answer != UNSUPPORTED_ANSWER:
+        for chunk in chunks:
+            source = Source(
+                message_id=message.id,
+                document_id=chunk.document_id,
+                document_name=chunk.document_name,
+                page_number=chunk.page_number,
+                chunk_number=chunk.chunk_number,
+                excerpt=chunk.text[:500],
+                relevance_score=chunk.relevance_score,
+            )
+            db.add(source)
+            source_models.append(source)
     db.flush()
     confidence = confidence_from_sources(source_models)
     db.commit()

@@ -1,90 +1,105 @@
 # DocuMind - AI Document Q&A Assistant
 
-DocuMind is a portfolio-grade AI SaaS application for private document question answering. Users upload PDF, TXT, and DOCX files, DocuMind extracts and chunks the content, stores embeddings in ChromaDB, and answers questions only from the uploaded material with citations.
+DocuMind is a production-style portfolio project for document-grounded question answering. Users can register, upload PDF/TXT/DOCX documents, ask questions over one or more documents, and receive answers constrained to the uploaded content with source citations.
+
+## Business Problem
+
+Teams often store important policies, product guides, support articles, and operating procedures across static documents. Generic chatbots can answer confidently from outside knowledge, which creates trust and compliance problems. DocuMind demonstrates a safer Retrieval-Augmented Generation pattern: retrieve relevant document sections, send only those sections to the model, and return citations so a user can verify the answer.
+
+Example use cases:
+
+- HR handbook and benefits Q&A
+- Product support guide search
+- University policy assistance
+- Healthcare portal FAQ assistance
+- Internal onboarding or runbook assistant
+
+## Feature Summary
+
+- User registration, login, JWT access tokens, refresh tokens, logout, and profile endpoint
+- Password hashing and basic password strength validation
+- User-specific document, vector, chat, and feedback isolation
+- PDF, TXT, and DOCX upload with extension, MIME, size, duplicate, empty-file, and extraction validation
+- Background document processing with `uploaded`, `processing`, `ready`, and `failed` statuses
+- Text extraction, cleanup, chunking, page/chunk metadata, Sentence-Transformers embeddings, and ChromaDB persistence
+- RAG answering through OpenAI by default, optional Llama 3 compatible endpoint, and local extractive fallback for demos/tests
+- Prompt-injection-resistant prompt that treats uploaded text as untrusted reference data
+- Source citations with document name, page number when available, chunk number, excerpt, relevance score, and highlighted excerpt
+- Conversations, chat history, rename/delete actions, streaming chat endpoint, and answer feedback
+- Document list, search, preview, download, reprocess, delete, status filters, and dashboard statistics
+- Responsive React + TypeScript frontend with light/dark theme, toasts, loading states, and error states
+- Alembic migrations, Pytest backend tests, Vitest frontend tests, Dockerfiles, Docker Compose, Render/Railway/Vercel config, and GitHub Actions
+
+## Tech Stack
+
+Backend:
+
+- Python, FastAPI, Pydantic
+- SQLAlchemy, Alembic, PostgreSQL
+- ChromaDB
+- Sentence-Transformers
+- LangChain dependency support
+- OpenAI API or Llama 3 compatible API
+- Pytest
+
+Frontend:
+
+- React, TypeScript, Vite
+- React Router
+- React Markdown and remark-gfm
+- Lucide icons
+- Vitest and Testing Library
+
+Operations:
+
+- Docker and Docker Compose
+- Render, Railway, Vercel configuration
+- GitHub Actions CI
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-  U["User"] --> FE["React + TypeScript SaaS UI"]
-  FE --> API["FastAPI REST + Streaming API"]
-  API --> AUTH["JWT + Refresh Tokens"]
-  API --> PG["PostgreSQL / SQLAlchemy"]
-  API --> FS["Local Upload Storage"]
-  API --> PARSE["PDF / DOCX / TXT Extraction"]
-  PARSE --> CHUNK["Chunking + Metadata"]
-  CHUNK --> EMB["Sentence-Transformers"]
-  EMB --> CHROMA["ChromaDB"]
-  API --> RAG["Hybrid Retrieval + Context Filtering"]
-  RAG --> LLM["OpenAI or Llama 3"]
+  User["User"] --> UI["React + TypeScript UI"]
+  UI --> API["FastAPI API"]
+  API --> Auth["JWT Auth + Rate Limiting"]
+  API --> DB["PostgreSQL via SQLAlchemy"]
+  API --> Storage["Local Upload Storage"]
+  Storage --> Extract["PDF/TXT/DOCX Extraction"]
+  Extract --> Chunk["Chunking + Source Metadata"]
+  Chunk --> Embed["Sentence-Transformers"]
+  Embed --> Chroma["ChromaDB"]
+  API --> Retrieve["Vector + Keyword Retrieval"]
+  Retrieve --> Prompt["Grounded Prompt Builder"]
+  Prompt --> LLM["OpenAI or Llama 3"]
   LLM --> API
-  API --> FE
+  API --> UI
 ```
 
-## Main Features
-
-- Registration, login, protected routes, JWT access tokens, refresh tokens, logout, and forgot-password placeholder
-- User-specific document access and chat history isolation
-- PDF, TXT, and DOCX uploads with extension, MIME, size, empty-file, duplicate, and extraction validation
-- Background document processing with `uploaded`, `processing`, `ready`, and `failed` states
-- Document metadata: size, pages, chunk count, processing status, embedding status, upload date, processed date
-- Extracted-text document preview with page/section view, chunk boundaries, search, safe download, and citation navigation
-- Local file storage for development with a service boundary that can be replaced by cloud storage
-- Sentence-Transformers embeddings and persistent ChromaDB vector storage
-- Hybrid retrieval scoring using vector relevance plus keyword overlap
-- Prompt-injection-resistant RAG prompt that treats documents as untrusted data
-- Exact unsupported-answer behavior: `I could not find this information in the uploaded documents.`
-- Chat conversations, message history, source citations, confidence score, highlighted excerpts, feedback
-- Streaming chat endpoint and ChatGPT-style frontend with markdown rendering, copy, regenerate, rename, and delete
-- Modern responsive SaaS dashboard with light/dark mode, toasts, loading skeletons, empty states, and polished navigation
-- Detailed health endpoint reporting database, Chroma, OpenAI configuration, and disk usage
-- Alembic migrations, Pytest backend tests, Vitest frontend tests, Dockerfiles, Docker Compose, and GitHub Actions
-
-## Tech Stack
-
-Backend:
-- Python, FastAPI, Pydantic, SQLAlchemy, Alembic
-- PostgreSQL for application data
-- ChromaDB for vector persistence
-- Sentence-Transformers for embeddings
-- OpenAI API by default, optional Llama 3 via Ollama-compatible chat API
-- Pytest for backend tests
-
-Frontend:
-- React, TypeScript, Vite
-- React Router
-- react-markdown + remark-gfm
-- lucide-react
-- Vitest + Testing Library
-
-Operations:
-- Docker, Docker Compose
-- GitHub Actions CI
-
-## Business Use Case
-
-DocuMind models the kind of internal knowledge assistant a company could use for HR policies, product guides, university policies, healthcare portal FAQs, onboarding manuals, or support runbooks. The core value is controlled document-grounded Q&A with citations rather than unconstrained chatbot responses.
-
-## RAG Request Flow
+## RAG Flow
 
 ```mermaid
 sequenceDiagram
-  participant User
   participant UI as React UI
   participant API as FastAPI
-  participant VS as ChromaDB
-  participant LLM as OpenAI or Llama
   participant DB as PostgreSQL
+  participant VS as ChromaDB
+  participant LLM as OpenAI/Llama
 
-  User->>UI: Ask question
-  UI->>API: POST /api/chat/ask/stream
-  API->>DB: Verify user, conversation, selected documents
-  API->>VS: Retrieve top-k chunks filtered by user and document IDs
-  API->>API: Apply relevance threshold and citation metadata
-  API->>LLM: Send prompt with retrieved context only
-  LLM-->>API: Grounded answer
-  API->>DB: Save message and source citations
-  API-->>UI: Stream answer chunks, then final citations
+  UI->>API: POST /api/chat/ask or /api/chat/ask/stream
+  API->>DB: Authorize user and selected documents
+  API->>VS: Retrieve top-k chunks filtered by user_id and document_id
+  API->>API: Apply relevance threshold and source metadata
+  API->>LLM: Send question plus untrusted excerpts only
+  LLM-->>API: Grounded answer or unsupported-answer response
+  API->>DB: Persist message and citations
+  API-->>UI: Return answer, confidence, and sources
+```
+
+Unsupported answer text is standardized:
+
+```text
+I could not find this information in the uploaded documents.
 ```
 
 ## Authentication Flow
@@ -96,38 +111,51 @@ sequenceDiagram
   participant DB as PostgreSQL
 
   UI->>API: Register or login
-  API->>DB: Verify user / hashed password
+  API->>DB: Store user with hashed password
   API->>DB: Store hashed refresh token
-  API-->>UI: Access token + refresh token
-  UI->>API: Authenticated requests with Bearer token
-  UI->>API: Refresh when needed
-  API->>DB: Rotate refresh token
+  API-->>UI: Access token and refresh token
+  UI->>API: Bearer access token on protected requests
+  UI->>API: Refresh token rotation when needed
+  API->>DB: Revoke old refresh token and store new hash
 ```
 
-JWTs are stored in `localStorage` in this portfolio implementation. This keeps the frontend simple and portable for Vercel/Render demos, but it has XSS tradeoffs. A production product should consider a complete secure-cookie implementation with CSRF protection.
+JWTs are stored in `localStorage` in this portfolio implementation for simple local and static-host demos. A hardened production version should use secure, HTTP-only cookies with CSRF protection.
 
-## Document Processing Lifecycle
+## Repository Structure
 
-```mermaid
-stateDiagram-v2
-  [*] --> uploaded: Save file and metadata
-  uploaded --> processing: FastAPI BackgroundTasks
-  processing --> ready: Extract, chunk, embed, upsert vectors
-  processing --> failed: Safe error recorded
-  failed --> processing: Reprocess
-  ready --> processing: Reprocess
-  ready --> [*]
+```text
+documind-ai-document-qa-assistant/
+├── backend/
+│   ├── app/
+│   │   ├── api/
+│   │   ├── core/
+│   │   ├── models/
+│   │   ├── schemas/
+│   │   ├── services/
+│   │   └── utils/
+│   ├── alembic/
+│   ├── evaluation/
+│   ├── sample_documents/
+│   └── tests/
+├── frontend/
+│   └── src/
+├── .github/workflows/
+├── docker-compose.yml
+├── render.yaml
+├── .env.example
+├── .gitignore
+└── README.md
 ```
 
 ## Local Installation
 
-Create an environment file:
+Create the environment file:
 
 ```bash
 cp .env.example .env
 ```
 
-Install and run the backend:
+Backend:
 
 ```bash
 cd backend
@@ -138,7 +166,7 @@ alembic upgrade head
 uvicorn app.main:app --reload
 ```
 
-Install and run the frontend:
+Frontend:
 
 ```bash
 cd frontend
@@ -147,34 +175,35 @@ npm run dev
 ```
 
 Local URLs:
+
 - Frontend: [http://localhost:5173](http://localhost:5173)
-- Backend: [http://localhost:8000](http://localhost:8000)
-- Swagger / OpenAPI: [http://localhost:8000/api/docs](http://localhost:8000/api/docs)
-- Health: [http://localhost:8000/api/health](http://localhost:8000/api/health)
+- Backend health: [http://localhost:8000/api/health](http://localhost:8000/api/health)
+- Swagger/OpenAPI: [http://localhost:8000/api/docs](http://localhost:8000/api/docs)
 
 ## Environment Variables
 
-See `.env.example` for the full list.
+| Variable | Purpose |
+| --- | --- |
+| `DATABASE_URL` | PostgreSQL or local SQLite URL |
+| `JWT_SECRET` | Secret used to sign JWT access tokens |
+| `REFRESH_TOKEN_EXPIRE_DAYS` | Refresh token lifetime |
+| `OPENAI_API_KEY` | OpenAI key for generated answers |
+| `LLM_PROVIDER` | `openai` or `llama` |
+| `OPENAI_MODEL` | OpenAI chat model |
+| `LLAMA_BASE_URL` | Llama/Ollama-compatible API base URL |
+| `LLAMA_MODEL` | Llama model name |
+| `EMBEDDING_MODEL` | Sentence-Transformers model |
+| `CHUNK_SIZE` | Chunk size for document splitting |
+| `CHUNK_OVERLAP` | Chunk overlap for document splitting |
+| `RETRIEVAL_TOP_K` | Number of chunks retrieved per question |
+| `MIN_RELEVANCE_SCORE` | Minimum hybrid relevance score |
+| `MAX_UPLOAD_SIZE_MB` | Upload size limit |
+| `UPLOAD_DIR` | File storage directory |
+| `CHROMA_DIR` | Chroma persistence directory |
+| `CORS_ORIGINS` | Allowed frontend origins |
+| `VITE_API_URL` | Frontend build-time API URL |
 
-Important values:
-
-- `DATABASE_URL`
-- `JWT_SECRET`
-- `OPENAI_API_KEY`
-- `LLM_PROVIDER` (`openai` or `llama`)
-- `OPENAI_MODEL`
-- `LLAMA_BASE_URL`
-- `LLAMA_MODEL`
-- `EMBEDDING_MODEL`
-- `CHUNK_SIZE`
-- `CHUNK_OVERLAP`
-- `RETRIEVAL_TOP_K`
-- `MIN_RELEVANCE_SCORE`
-- `MAX_UPLOAD_SIZE_MB`
-- `UPLOAD_DIR`
-- `CHROMA_DIR`
-
-If `OPENAI_API_KEY` is empty, DocuMind uses a deterministic extractive fallback for local demos. Production deployments should configure a real LLM provider.
+Never commit `.env`, real API keys, database credentials, or JWT secrets.
 
 ## Database Migrations
 
@@ -184,9 +213,10 @@ alembic upgrade head
 ```
 
 Current migrations:
+
 - `0001_initial`: users, documents, conversations, messages, sources, feedback
 - `0002_refresh_document_metadata`: refresh tokens, page count, embedding status, processed timestamp
-- `0003_ready_document_status`: normalizes old `processed` rows to `ready`
+- `0003_ready_document_status`: normalizes legacy `processed` status rows to `ready`
 
 ## Docker
 
@@ -196,57 +226,35 @@ docker compose up --build
 ```
 
 Services:
-- `frontend`: React app served by Nginx
-- `backend`: FastAPI app
-- `postgres`: PostgreSQL database
-- `chroma`: ChromaDB service with persistent volume
 
-The backend currently uses embedded Chroma persistence through `CHROMA_DIR`; the Chroma service is included for deployment evolution and operational parity.
+- `backend`: FastAPI API
+- `frontend`: React app served through Nginx
+- `postgres`: PostgreSQL
+- `chroma`: Chroma service included for operational parity; the backend currently uses embedded persistent Chroma through `CHROMA_DIR`
 
 ## Deployment
 
-Supported deployment shape:
-- Frontend: Vercel or Render static site
-- Backend: Render or Railway web service
-- Database: managed PostgreSQL
-- Vector store: persistent ChromaDB directory for development or a mounted disk in simple deployments
-- Uploads: local development storage; production should add S3-compatible storage before serving real users
+Frontend options:
 
-Deployment files:
-- `render.yaml` for Render backend/static frontend setup
-- `frontend/vercel.json` for Vercel SPA routing
-- `backend/railway.json` for Railway Docker deployment
+- Vercel using `frontend/vercel.json`
+- Render static site using the frontend service in `render.yaml`
 
-Backend deployment steps:
+Backend options:
 
-```bash
-cd backend
-alembic upgrade head
-uvicorn app.main:app --host 0.0.0.0 --port $PORT
-```
+- Render Docker web service using `render.yaml`
+- Railway Docker service using `backend/railway.json`
 
-Frontend deployment steps:
+Production checklist:
 
-```bash
-cd frontend
-npm install
-npm run build
-```
-
-Set frontend `VITE_API_URL` to the deployed backend API base URL, for example `https://your-backend.example.com/api`.
-
-Production environment checklist:
 - Set `ENVIRONMENT=production`
-- Set a strong unique `JWT_SECRET`
+- Set a strong `JWT_SECRET`
 - Set `DATABASE_URL` to managed PostgreSQL
-- Set `OPENAI_API_KEY` or configure a reachable Llama endpoint
-- Set `CORS_ORIGINS` to only deployed frontend origins
-- Configure persistent disk for `CHROMA_DIR`
-- Configure persistent disk or replace local uploads with S3-compatible storage
-- Run `alembic upgrade head` during deployment
+- Set `OPENAI_API_KEY` or configure `LLM_PROVIDER=llama` with a reachable Llama endpoint
+- Set `CORS_ORIGINS` to deployed frontend origins only
+- Set frontend `VITE_API_URL` to the deployed backend `/api` base URL
+- Configure persistent storage for `UPLOAD_DIR` and `CHROMA_DIR`
+- Run `alembic upgrade head` before backend startup
 - Verify `/api/health`
-- Verify frontend `VITE_API_URL`
-- Do not commit `.env` or `.env.local`
 
 ## Testing
 
@@ -266,7 +274,7 @@ npm test
 npm run build
 ```
 
-External LLM and vector calls are mocked in backend tests so the suite runs without API credits.
+External LLM calls are mocked in tests so the suite can run without API credits.
 
 ## Evaluation
 
@@ -277,73 +285,32 @@ cd backend
 python -m evaluation.evaluate
 ```
 
-The generated report is stored at `backend/evaluation/evaluation_report.json`. Only use metrics from this actual report; do not invent performance claims.
-
-## Sample Documents
-
-Demo documents are included under `backend/sample_documents`:
-- Employee handbook
-- Product user guide
-- University policy
-- Healthcare portal FAQ
-
-## API Highlights
-
-Auth:
-- `POST /api/auth/register`
-- `POST /api/auth/login`
-- `POST /api/auth/refresh`
-- `POST /api/auth/logout`
-- `POST /api/auth/forgot-password`
-- `GET /api/auth/me`
-
-Documents:
-- `POST /api/documents/upload`
-- `GET /api/documents`
-- `GET /api/documents/{document_id}`
-- `GET /api/documents/{document_id}/download`
-- `GET /api/documents/{document_id}/search`
-- `GET /api/documents/{document_id}/preview`
-- `POST /api/documents/{document_id}/reprocess`
-- `DELETE /api/documents/{document_id}`
-
-Chat:
-- `POST /api/chat/conversations`
-- `GET /api/chat/conversations`
-- `GET /api/chat/conversations/{conversation_id}`
-- `PATCH /api/chat/conversations/{conversation_id}`
-- `DELETE /api/chat/conversations/{conversation_id}`
-- `POST /api/chat/ask`
-- `POST /api/chat/ask/stream`
-
-Feedback:
-- `POST /api/feedback`
-
-Dashboard:
-- `GET /api/dashboard/summary`
+The report is written to `backend/evaluation/evaluation_report.json`. Use only metrics generated by this script; do not invent performance claims.
 
 ## Screenshots
 
-Add screenshots after running locally:
+Add portfolio screenshots after running locally:
+
 - Dashboard
 - Upload progress
-- Document detail and search
+- Document details and preview
 - Chat with citations
 - Dark mode
+- API docs
 
 ## Known Limitations
 
-- Document processing uses FastAPI `BackgroundTasks`, which is suitable for demos and simple single-process deployments. A production multi-instance system should move processing to Celery, RQ, or another durable worker queue.
-- The streaming endpoint streams the final generated text to the UI after retrieval and model completion; direct provider token streaming can be added next.
-- Local filesystem storage is used for development.
+- Background processing uses FastAPI `BackgroundTasks`; production multi-instance deployments should use a durable worker queue.
+- Local filesystem storage is used for uploads; production should use object storage before handling real users.
+- The streaming endpoint streams the generated answer after retrieval/model completion; direct provider token streaming can be added.
 - In-memory rate limiting resets on process restart.
-- Docker could not be executed in the current development environment, so image builds should be verified on a machine with Docker installed.
+- JWT storage uses `localStorage`; a hardened product should use HTTP-only cookies.
 
-## Roadmap
+## Future Roadmap
 
-- Durable worker queue for document processing
+- Durable worker queue with retry/dead-letter handling
+- S3-compatible storage adapter
 - Direct provider token streaming
-- Cloud object storage adapter
 - Organization/team workspaces
-- Admin analytics for retrieval quality and feedback
-- Stronger observability with traces and metrics
+- Admin analytics for retrieval quality, source coverage, and user feedback
+- OpenTelemetry traces and structured production logging

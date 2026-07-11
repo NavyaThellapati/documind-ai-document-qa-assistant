@@ -27,3 +27,12 @@ def test_refresh_and_logout(client):
 def test_protected_endpoint_requires_token(client):
     response = client.get("/api/documents")
     assert response.status_code in {401, 403}
+
+
+def test_auth_rate_limit_rejects_excess_attempts(client):
+    for _ in range(10):
+        response = client.post("/api/auth/login", json={"email": "missing@example.com", "password": "Wrongpass123"})
+        assert response.status_code == 401
+
+    limited = client.post("/api/auth/login", json={"email": "missing@example.com", "password": "Wrongpass123"})
+    assert limited.status_code == 429

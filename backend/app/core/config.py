@@ -38,8 +38,12 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_production_secrets(self) -> "Settings":
-        if self.environment.lower() == "production" and self.jwt_secret == "change-me-in-production":
-            raise ValueError("JWT_SECRET must be set to a strong unique value in production.")
+        if self.environment.lower() == "production":
+            if self.jwt_secret == "change-me-in-production":
+                raise ValueError("JWT_SECRET must be set to a strong unique value in production.")
+            localhost_origins = [origin for origin in self.cors_origins if "localhost" in origin or "127.0.0.1" in origin]
+            if localhost_origins:
+                raise ValueError("CORS_ORIGINS must not include localhost origins in production.")
         return self
 
 

@@ -34,6 +34,7 @@ def test_missing_answer_behavior(client, auth_headers):
     asked = client.post("/api/chat/ask", headers=auth_headers, json={"question": "unknown executive compensation?"})
     assert asked.status_code == 200
     assert "could not find" in asked.json()["answer"].lower()
+    assert asked.json()["sources"] == []
 
 
 def test_rename_and_delete_conversation(client, auth_headers):
