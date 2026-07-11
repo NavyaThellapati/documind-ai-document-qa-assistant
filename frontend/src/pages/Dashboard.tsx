@@ -12,10 +12,12 @@ function formatBytes(bytes: number) {
 export function Dashboard() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   useEffect(() => {
-    api.dashboard().then(setSummary).finally(() => setLoading(false));
+    api.dashboard().then(setSummary).catch((err) => setError(err.message)).finally(() => setLoading(false));
   }, []);
   if (loading) return <section className="page"><div className="skeleton hero-skeleton" /><div className="metric-grid">{[1, 2, 3, 4].map((item) => <div className="skeleton metric" key={item} />)}</div></section>;
+  if (error) return <section className="page"><div className="error">{error}</div></section>;
   return (
     <section className="page">
       <div className="page-title"><h1>Dashboard</h1><Link className="button" to="/chat">Ask a question</Link></div>

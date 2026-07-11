@@ -1,5 +1,5 @@
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class DocumentRead(BaseModel):
@@ -21,7 +21,7 @@ class DocumentRead(BaseModel):
 
 
 class DocumentList(BaseModel):
-    documents: list[DocumentRead]
+    documents: list[DocumentRead] = Field(default_factory=list)
 
 
 class DocumentUploadResponse(BaseModel):
@@ -37,7 +37,7 @@ class DocumentSearchResult(BaseModel):
 
 class DocumentSearchResponse(BaseModel):
     query: str
-    results: list[DocumentSearchResult]
+    results: list[DocumentSearchResult] = Field(default_factory=list)
 
 
 class DocumentPreviewSection(BaseModel):
@@ -53,5 +53,5 @@ class DocumentPreviewChunk(BaseModel):
 
 class DocumentPreviewResponse(BaseModel):
     document: DocumentRead
-    sections: list[DocumentPreviewSection]
-    chunks: list[DocumentPreviewChunk]
+    sections: list[DocumentPreviewSection] = Field(default_factory=list)
+    chunks: list[DocumentPreviewChunk] = Field(default_factory=list)

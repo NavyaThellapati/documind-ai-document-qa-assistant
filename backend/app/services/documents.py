@@ -1,5 +1,6 @@
 from pathlib import Path
 import logging
+from datetime import datetime, timezone
 
 from fastapi import HTTPException, UploadFile, status
 from sqlalchemy.exc import IntegrityError
@@ -10,7 +11,7 @@ from app.core.database import SessionLocal
 from app.models import Document, User
 from app.services.text_processing import estimate_page_count, extract_text_sections, split_sections
 from app.services.vector_store import get_vector_store
-from app.utils.files import sanitize_filename, sha256_bytes, validate_content_type, validate_extension
+from app.utils.files import ensure_within_directory, sanitize_filename, sha256_bytes, validate_content_type, validate_extension
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +37,7 @@ async def save_upload(db: Session, user: User, file: UploadFile) -> tuple[Docume
     upload_root = Path(settings.upload_dir) / user.id
     upload_root.mkdir(parents=True, exist_ok=True)
     stored_name = sanitize_filename(file.filename or "document")
-    stored_path = upload_root / stored_name
+    stored_path = ensure_within_directory(upload_root, upload_root / stored_name)
     stored_path.write_bytes(data)
 
     document = Document(
@@ -82,8 +83,6 @@ def process_document(db: Session, document: Document) -> Document:
         document.embedding_status = "ready"
         document.chunk_count = len(chunks)
         document.error_message = None
-        from datetime import datetime, timezone
-
         document.processed_at = datetime.now(timezone.utc)
     except Exception as exc:
         logger.exception("Document processing failed for document_id=%s", document.id)
@@ -110,7 +109,8 @@ def process_document_by_id(document_id: str) -> None:
 def delete_document(db: Session, user: User, document: Document) -> None:
     get_vector_store().delete_document(user.id, document.id)
     try:
-        Path(document.file_path).unlink(missing_ok=True)
+        upload_root = Path(get_settings().upload_dir) / user.id
+        ensure_within_directory(upload_root, Path(document.file_path)).unlink(missing_ok=True)
     finally:
         db.delete(document)
         db.commit()

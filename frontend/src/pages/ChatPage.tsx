@@ -18,21 +18,35 @@ export function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [loadingLists, setLoadingLists] = useState(true);
   const [draftAnswer, setDraftAnswer] = useState("");
   const lastQuestion = useRef("");
   const abortRef = useRef<AbortController | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const { notify } = useToast();
-  function loadConversations() { api.conversations().then(setConversations); }
+  function loadConversations() { api.conversations().then(setConversations).catch((err) => setError(err.message)); }
   useEffect(() => {
-    api.documents("?status_filter=ready").then((r) => setDocuments(r.documents));
-    loadConversations();
+    setLoadingLists(true);
+    Promise.all([
+      api.documents("?status_filter=ready").then((r) => setDocuments(r.documents)),
+      api.conversations().then(setConversations),
+    ]).catch((err) => {
+      const message = err instanceof Error ? err.message : "Unable to load chat data";
+      setError(message);
+      notify(message, "error");
+    }).finally(() => setLoadingLists(false));
   }, []);
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, draftAnswer]);
   async function openConversation(id: string) {
-    const conversation = await api.conversation(id);
-    setConversationId(conversation.id);
-    setMessages(conversation.messages);
+    try {
+      const conversation = await api.conversation(id);
+      setConversationId(conversation.id);
+      setMessages(conversation.messages);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unable to open conversation";
+      setError(message);
+      notify(message, "error");
+    }
   }
   async function ask(event: FormEvent) {
     event.preventDefault();
@@ -69,19 +83,31 @@ export function ChatPage() {
   async function renameConversation(id: string) {
     const title = window.prompt("Rename conversation");
     if (!title) return;
-    await api.renameConversation(id, title);
-    notify("Conversation renamed.", "success");
-    loadConversations();
+    try {
+      await api.renameConversation(id, title);
+      notify("Conversation renamed.", "success");
+      loadConversations();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Rename failed";
+      setError(message);
+      notify(message, "error");
+    }
   }
   async function deleteConversation(id: string) {
     if (!window.confirm("Delete this conversation? This cannot be undone.")) return;
-    await api.deleteConversation(id);
-    if (conversationId === id) {
-      setConversationId(undefined);
-      setMessages([]);
+    try {
+      await api.deleteConversation(id);
+      if (conversationId === id) {
+        setConversationId(undefined);
+        setMessages([]);
+      }
+      notify("Conversation deleted.", "success");
+      loadConversations();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Delete failed";
+      setError(message);
+      notify(message, "error");
     }
-    notify("Conversation deleted.", "success");
-    loadConversations();
   }
   function copyAnswer(answer: string) {
     navigator.clipboard.writeText(answer).then(() => notify("Answer copied.", "success"));
@@ -96,11 +122,12 @@ export function ChatPage() {
     <section className="page chat-layout pro-chat">
       <aside className="conversation-sidebar">
         <button className="button full" onClick={() => { setConversationId(undefined); setMessages([]); }}><MessageSquare size={16} /> New chat</button>
+        {loadingLists && <div className="empty compact-empty">Loading conversations...</div>}
         {conversations.map((conversation) => <div className={`conversation-row ${conversation.id === conversationId ? "active" : ""}`} key={conversation.id}><button onClick={() => openConversation(conversation.id)}>{conversation.title}</button><button title="Rename" onClick={() => renameConversation(conversation.id)}><Edit3 size={14} /></button><button title="Delete" onClick={() => deleteConversation(conversation.id)}><Trash2 size={14} /></button></div>)}
       </aside>
       <aside className="document-picker">
         <h2>Scope</h2>
-        {documents.length ? documents.map((doc) => <label key={doc.id}><input type="checkbox" checked={selected.includes(doc.id)} onChange={() => toggle(doc.id)} />{doc.original_filename}</label>) : <div className="empty">Upload ready documents before chatting.</div>}
+        {loadingLists ? <div className="empty compact-empty">Loading documents...</div> : documents.length ? documents.map((doc) => <label key={doc.id}><input type="checkbox" checked={selected.includes(doc.id)} onChange={() => toggle(doc.id)} />{doc.original_filename}</label>) : <div className="empty">Upload ready documents before chatting.</div>}
         <span>{selected.length === 0 ? "All ready documents selected" : `${selected.length} selected`}</span>
       </aside>
       <div className="chat-panel">
@@ -111,7 +138,7 @@ export function ChatPage() {
           <div ref={bottomRef} />
         </div>
         {error && <div className="error">{error}</div>}
-        <form className="ask-box" onSubmit={ask}><textarea value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Ask a question about your uploaded documents" required />{loading ? <button type="button" onClick={stopGeneration}><Square size={16} /> Stop</button> : <button>Ask</button>}</form>
+        <form className="ask-box" onSubmit={ask}><textarea value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Ask a question about your uploaded documents" required />{loading ? <button type="button" onClick={stopGeneration}><Square size={16} /> Stop</button> : <button disabled={loadingLists}>Ask</button>}</form>
       </div>
     </section>
   );

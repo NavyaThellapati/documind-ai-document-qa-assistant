@@ -26,7 +26,7 @@ Example use cases:
 - Prompt-injection-resistant prompt that treats uploaded text as untrusted reference data
 - Source citations with document name, page number when available, chunk number, excerpt, relevance score, and highlighted excerpt
 - Conversations, chat history, rename/delete actions, streaming chat endpoint, and answer feedback
-- Document list, search, preview, download, reprocess, delete, status filters, and dashboard statistics
+- Document list, search, preview, authenticated download, reprocess, delete, status filters, and dashboard statistics
 - Responsive React + TypeScript frontend with light/dark theme, toasts, loading states, and error states
 - Alembic migrations, Pytest backend tests, Vitest frontend tests, Dockerfiles, Docker Compose, Render/Railway/Vercel config, and GitHub Actions
 
@@ -192,11 +192,14 @@ Local URLs:
 | `OPENAI_MODEL` | OpenAI chat model |
 | `LLAMA_BASE_URL` | Llama/Ollama-compatible API base URL |
 | `LLAMA_MODEL` | Llama model name |
-| `EMBEDDING_MODEL` | Sentence-Transformers model |
+| `EMBEDDING_MODEL` | Sentence-Transformers model, or `hashing` for offline smoke tests |
 | `CHUNK_SIZE` | Chunk size for document splitting |
 | `CHUNK_OVERLAP` | Chunk overlap for document splitting |
 | `RETRIEVAL_TOP_K` | Number of chunks retrieved per question |
 | `MIN_RELEVANCE_SCORE` | Minimum hybrid relevance score |
+| `AUTH_RATE_LIMIT_PER_MINUTE` | Per-client limit for auth endpoints |
+| `CHAT_RATE_LIMIT_PER_MINUTE` | Per-client limit for chat endpoints |
+| `LLM_TIMEOUT_SECONDS` | LLM request timeout |
 | `MAX_UPLOAD_SIZE_MB` | Upload size limit |
 | `UPLOAD_DIR` | File storage directory |
 | `CHROMA_DIR` | Chroma persistence directory |
@@ -228,7 +231,7 @@ docker compose up --build
 Services:
 
 - `backend`: FastAPI API
-- `frontend`: React app served through Nginx
+- `frontend`: React app served through Nginx with SPA route fallback
 - `postgres`: PostgreSQL
 - `chroma`: Chroma service included for operational parity; the backend currently uses embedded persistent Chroma through `CHROMA_DIR`
 
@@ -253,6 +256,7 @@ Production checklist:
 - Set `CORS_ORIGINS` to deployed frontend origins only
 - Set frontend `VITE_API_URL` to the deployed backend `/api` base URL
 - Configure persistent storage for `UPLOAD_DIR` and `CHROMA_DIR`
+- Keep `CORS_ORIGINS` free of localhost values when `ENVIRONMENT=production`
 - Run `alembic upgrade head` before backend startup
 - Verify `/api/health`
 

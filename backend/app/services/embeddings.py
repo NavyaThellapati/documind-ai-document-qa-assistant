@@ -10,6 +10,9 @@ class EmbeddingService:
         self.model_name = model_name or get_settings().embedding_model
         self._model = None
 
+    def _uses_local_hashing(self) -> bool:
+        return self.model_name.lower() in {"hashing", "local-hashing", "fallback"}
+
     def _load_model(self):
         if self._model is None:
             from sentence_transformers import SentenceTransformer
@@ -20,6 +23,8 @@ class EmbeddingService:
     def embed(self, texts: list[str]) -> list[list[float]]:
         if not texts:
             return []
+        if self._uses_local_hashing():
+            return [self._fallback_embedding(text) for text in texts]
         try:
             vectors = self._load_model().encode(texts, normalize_embeddings=True)
             return [list(map(float, vector)) for vector in vectors]

@@ -21,19 +21,35 @@ export function DocumentDetails() {
   }, [id]);
   async function reprocess() {
     if (!id) return;
-    setDocument(await api.reprocess(id));
-    notify("Document reprocessed.", "success");
+    try {
+      setDocument(await api.reprocess(id));
+      notify("Document reprocessed.", "success");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Reprocess failed");
+    }
   }
   async function search() {
     if (!id || query.trim().length < 2) return;
-    const response = await api.searchDocument(id, query);
-    setResults(response.results);
+    try {
+      const response = await api.searchDocument(id, query);
+      setResults(response.results);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Search failed");
+    }
+  }
+  async function download() {
+    if (!document) return;
+    try {
+      await api.downloadDocument(document.id, document.original_filename);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Download failed");
+    }
   }
   if (error) return <section className="page"><div className="error">{error}</div></section>;
   if (!document) return <section className="page">Loading...</section>;
   return (
     <section className="page">
-      <div className="page-title"><h1>{document.original_filename}</h1><div className="actions"><a className="button secondary" href={api.downloadUrl(document.id)}><Download size={16} /> Download</a><button className="button" onClick={reprocess}><RotateCw size={16} /> Reprocess</button></div></div>
+      <div className="page-title"><h1>{document.original_filename}</h1><div className="actions"><button className="button secondary" onClick={download}><Download size={16} /> Download</button><button className="button" onClick={reprocess}><RotateCw size={16} /> Reprocess</button></div></div>
       <div className="detail-grid">
         <div><span>Status</span><strong>{document.status}</strong></div>
         <div><span>Embedding</span><strong>{document.embedding_status}</strong></div>

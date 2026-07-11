@@ -22,8 +22,12 @@ class VectorStoreService:
         settings = get_settings()
         settings.chroma_dir.mkdir(parents=True, exist_ok=True)
         import chromadb
+        from chromadb.config import Settings
 
-        self.client = chromadb.PersistentClient(path=str(settings.chroma_dir))
+        self.client = chromadb.PersistentClient(
+            path=str(settings.chroma_dir),
+            settings=Settings(anonymized_telemetry=False),
+        )
         self.collection = self.client.get_or_create_collection(name="documind_chunks", metadata={"hnsw:space": "cosine"})
         self.embeddings = get_embedding_service()
 

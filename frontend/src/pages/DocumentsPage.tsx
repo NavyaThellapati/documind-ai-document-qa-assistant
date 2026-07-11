@@ -9,23 +9,48 @@ export function DocumentsPage() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
   const { notify } = useToast();
   function load() {
+    setLoading(true);
+    setError("");
     const params = new URLSearchParams();
     if (search) params.set("search", search);
     if (status) params.set("status_filter", status);
-    api.documents(params.toString() ? `?${params}` : "").then((r) => setDocuments(r.documents)).catch((err) => setError(err.message));
+    api.documents(params.toString() ? `?${params}` : "").then((r) => setDocuments(r.documents)).catch((err) => setError(err.message)).finally(() => setLoading(false));
   }
   useEffect(load, [search, status]);
   async function remove(id: string) {
-    await api.deleteDocument(id);
-    notify("Document deleted.", "success");
-    load();
+    if (!window.confirm("Delete this document and its embeddings?")) return;
+    try {
+      await api.deleteDocument(id);
+      notify("Document deleted.", "success");
+      load();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Delete failed";
+      setError(message);
+      notify(message, "error");
+    }
   }
   async function reprocess(id: string) {
-    await api.reprocess(id);
-    notify("Document reprocessing completed.", "success");
-    load();
+    try {
+      await api.reprocess(id);
+      notify("Document reprocessing completed.", "success");
+      load();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Reprocess failed";
+      setError(message);
+      notify(message, "error");
+    }
+  }
+  async function download(doc: DocumentItem) {
+    try {
+      await api.downloadDocument(doc.id, doc.original_filename);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Download failed";
+      setError(message);
+      notify(message, "error");
+    }
   }
   return (
     <section className="page">
@@ -39,11 +64,11 @@ export function DocumentsPage() {
             <span>{doc.status}</span>
             <span>{doc.page_count ?? "?"} pages</span>
             <span>{doc.embedding_status}</span>
-            <a className="icon-button" title="Download" href={api.downloadUrl(doc.id)}><Download size={16} /></a>
+            <button className="icon-button" title="Download" onClick={() => download(doc)}><Download size={16} /></button>
             <button className="icon-button" title="Reprocess" onClick={() => reprocess(doc.id)}><RefreshCw size={16} /></button>
             <button className="icon-button" title="Delete" onClick={() => remove(doc.id)}><Trash2 size={16} /></button>
           </div>
-        )) : <div className="empty table-empty">No documents match your filters.</div>}
+        )) : <div className="empty table-empty">{loading ? "Loading documents..." : "No documents match your filters."}</div>}
       </div>
     </section>
   );

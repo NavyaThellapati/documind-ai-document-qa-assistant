@@ -3,6 +3,7 @@ import json
 import re
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy import func
 from sqlalchemy.orm import Session, selectinload
@@ -121,8 +122,8 @@ def create_conversation(payload: ConversationCreate, db: Session = Depends(get_d
 @router.get("/conversations", response_model=list[ConversationSummary])
 def list_conversations(
     search: str | None = None,
-    limit: int = 50,
-    offset: int = 0,
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):

@@ -61,7 +61,9 @@ def login(payload: UserLogin, request: Request, db: Session = Depends(get_db)) -
 
 
 @router.post("/refresh", response_model=TokenResponse)
-def refresh(payload: RefreshRequest, db: Session = Depends(get_db)) -> TokenResponse:
+def refresh(payload: RefreshRequest, request: Request, db: Session = Depends(get_db)) -> TokenResponse:
+    settings = get_settings()
+    rate_limiter.check(request, "auth", settings.auth_rate_limit_per_minute)
     token = db.query(RefreshToken).filter(RefreshToken.token_hash == hash_token(payload.refresh_token)).first()
     now = datetime.now(timezone.utc)
     if not token or token.revoked_at or as_aware_utc(token.expires_at) < now:
@@ -82,7 +84,9 @@ def logout(payload: RefreshRequest, db: Session = Depends(get_db), current_user:
 
 
 @router.post("/forgot-password")
-def forgot_password(payload: ForgotPasswordRequest):
+def forgot_password(payload: ForgotPasswordRequest, request: Request):
+    settings = get_settings()
+    rate_limiter.check(request, "auth", settings.auth_rate_limit_per_minute)
     return {"message": "If an account exists for this email, password reset instructions will be sent."}
 
 

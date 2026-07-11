@@ -6,11 +6,13 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
 from app.core.database import get_db
+from app.core.config import get_settings
 from app.models import Document, User
 from app.schemas.documents import DocumentList, DocumentPreviewChunk, DocumentPreviewResponse, DocumentPreviewSection, DocumentRead, DocumentSearchResponse, DocumentSearchResult, DocumentUploadResponse
 from app.services.documents import delete_document as delete_document_service
 from app.services.documents import process_document, process_document_by_id, save_upload
 from app.services.text_processing import extract_text_sections, search_sections, split_sections
+from app.utils.files import ensure_within_directory
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
@@ -98,7 +100,7 @@ def reprocess_document_background(document_id: str, background_tasks: Background
 @router.get("/{document_id}/download")
 def download_document(document_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     document = get_owned_document(db, current_user, document_id)
-    path = Path(document.file_path)
+    path = ensure_within_directory(Path(get_settings().upload_dir) / current_user.id, Path(document.file_path))
     if not path.exists():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stored file was not found.")
     return FileResponse(path, filename=document.original_filename, media_type=document.content_type)
@@ -116,8 +118,6 @@ def search_document(document_id: str, query: str = Query(min_length=2, max_lengt
 def preview_document(document_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     document = get_owned_document(db, current_user, document_id)
     sections = extract_text_sections(Path(document.file_path), Path(document.original_filename).suffix.lower())
-    from app.core.config import get_settings
-
     settings = get_settings()
     chunks = split_sections(sections, settings.chunk_size, settings.chunk_overlap)
     return DocumentPreviewResponse(

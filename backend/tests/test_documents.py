@@ -10,6 +10,12 @@ def test_file_validation_rejects_unsupported(client, auth_headers):
     assert response.status_code == 400
 
 
+def test_download_requires_authentication(client, auth_headers):
+    document = upload_txt(client, auth_headers).json()["document"]
+    response = client.get(f"/api/documents/{document['id']}/download")
+    assert response.status_code in {401, 403}
+
+
 def test_document_upload_list_detail_delete(client, auth_headers):
     response = upload_txt(client, auth_headers)
     assert response.status_code == 201

@@ -36,3 +36,13 @@ def test_auth_rate_limit_rejects_excess_attempts(client):
 
     limited = client.post("/api/auth/login", json={"email": "missing@example.com", "password": "Wrongpass123"})
     assert limited.status_code == 429
+
+
+def test_refresh_rate_limit_rejects_excess_attempts(client):
+    invalid_token = "x" * 40
+    for _ in range(10):
+        response = client.post("/api/auth/refresh", json={"refresh_token": invalid_token})
+        assert response.status_code == 401
+
+    limited = client.post("/api/auth/refresh", json={"refresh_token": invalid_token})
+    assert limited.status_code == 429

@@ -91,6 +91,7 @@ h2 { font-size: 1.1rem; }
 .list-row, .table-row { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: .9rem; border-bottom: 1px solid var(--border); background: var(--panel); color: var(--text); }
 .list-row em, .table-row span { color: var(--muted); font-style: normal; }
 .empty { min-height: 112px; display: grid; place-items: center; text-align: center; gap: .5rem; color: var(--muted); border: 1px dashed var(--border); border-radius: 10px; padding: 1rem; }
+.compact-empty { min-height: 68px; }
 
 .filters { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: .75rem; display: flex; gap: .7rem; align-items: center; margin-bottom: 1rem; }
 input, textarea, select { border: 1px solid var(--border); border-radius: 8px; padding: .75rem; width: 100%; background: var(--panel-strong); color: var(--text); }
@@ -170,4 +171,6 @@ small { color: var(--muted); }
   .table-row { grid-template-columns: 1fr; align-items: start; }
   .ask-box { grid-template-columns: 1fr; }
   .page { padding: 1rem; }
+  .sidebar nav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sidebar a, .ghost { min-height: 44px; }
 }

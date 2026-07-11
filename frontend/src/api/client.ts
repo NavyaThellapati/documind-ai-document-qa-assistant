@@ -54,6 +54,19 @@ export class ApiError extends Error {
   }
 }
 
+function errorMessage(detail: unknown): string {
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    return detail
+      .map((item) => {
+        if (item && typeof item === "object" && "msg" in item) return String((item as { msg: unknown }).msg);
+        return String(item);
+      })
+      .join("; ");
+  }
+  return "Request failed";
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = localStorage.getItem("documind_token");
   const headers = new Headers(options.headers);
@@ -62,7 +75,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(`${API_URL}${path}`, { ...options, headers });
   if (!response.ok) {
     const payload = await response.json().catch(() => ({ detail: "Request failed" }));
-    throw new ApiError(response.status, payload.detail ?? "Request failed");
+    throw new ApiError(response.status, errorMessage(payload.detail));
   }
   if (response.status === 204) return undefined as T;
   return response.json();
@@ -98,7 +111,7 @@ export const api = {
       xhr.onload = () => {
         const payload = JSON.parse(xhr.responseText || "{}");
         if (xhr.status >= 200 && xhr.status < 300) resolve(payload);
-        else reject(new ApiError(xhr.status, payload.detail ?? "Upload failed"));
+        else reject(new ApiError(xhr.status, errorMessage(payload.detail)));
       };
       xhr.onerror = () => reject(new ApiError(0, "Network error during upload"));
       xhr.send(body);
@@ -107,7 +120,25 @@ export const api = {
   reprocess: (id: string) => request<DocumentItem>(`/documents/${id}/reprocess`, { method: "POST" }),
   searchDocument: (id: string, query: string) => request<{ query: string; results: Array<{ page_number?: number | null; excerpt: string }> }>(`/documents/${id}/search?query=${encodeURIComponent(query)}`),
   previewDocument: (id: string) => request<DocumentPreview>(`/documents/${id}/preview`),
-  downloadUrl: (id: string) => `${API_URL}/documents/${id}/download`,
+  async downloadDocument(id: string, filename: string) {
+    const token = localStorage.getItem("documind_token");
+    const response = await fetch(`${API_URL}/documents/${id}/download`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({ detail: "Download failed" }));
+      throw new ApiError(response.status, errorMessage(payload.detail));
+    }
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = filename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  },
   conversations: () => request<ConversationSummary[]>("/chat/conversations"),
   conversation: (id: string) => request<Conversation>(`/chat/conversations/${id}`),
   createConversation: (title: string) => request<Conversation>("/chat/conversations", { method: "POST", body: JSON.stringify({ title }) }),
@@ -130,7 +161,7 @@ export const api = {
     });
     if (!response.ok || !response.body) {
       const error = await response.json().catch(() => ({ detail: "Streaming request failed" }));
-      throw new ApiError(response.status, error.detail ?? "Streaming request failed");
+      throw new ApiError(response.status, errorMessage(error.detail));
     }
     const reader = response.body.getReader();
     const decoder = new TextDecoder();

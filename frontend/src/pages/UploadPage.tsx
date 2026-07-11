@@ -23,7 +23,7 @@ export function UploadPage() {
     try {
       const result = await api.uploadWithProgress(file, setProgress);
       setStatus(`${result.message} Status: ${result.document.status}. Chunks: ${result.document.chunk_count}.`);
-      notify("Document uploaded and indexed.", "success");
+      notify(result.duplicate ? "Duplicate document found." : "Document uploaded. Processing has started.", "success");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Upload failed";
       setStatus(message);
