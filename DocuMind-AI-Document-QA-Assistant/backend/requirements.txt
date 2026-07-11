@@ -1,0 +1,26 @@
+alembic==1.13.2
+chromadb==0.5.5
+fastapi==0.112.2
+email-validator==2.2.0
+httpx==0.27.2
+langchain==0.2.14
+langchain-community==0.2.12
+langchain-openai==0.1.22
+openai==1.42.0
+bcrypt==4.2.1
+passlib[bcrypt]==1.7.4
+psycopg[binary]==3.2.1
+pydantic-settings==2.4.0
+PyJWT==2.9.0
+pypdf==4.3.1
+python-docx==1.1.2
+python-multipart==0.0.9
+sentence-transformers==3.0.1
+SQLAlchemy==2.0.32
+tenacity==8.5.0
+uvicorn[standard]==0.30.6
+
+# Test tooling
+pytest==8.3.2
+pytest-asyncio==0.23.8
+pytest-cov==5.0.0
