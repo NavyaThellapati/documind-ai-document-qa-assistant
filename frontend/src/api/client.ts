@@ -118,6 +118,7 @@ export const api = {
     }),
   deleteDocument: (id: string) => request<void>(`/documents/${id}`, { method: "DELETE" }),
   reprocess: (id: string) => request<DocumentItem>(`/documents/${id}/reprocess`, { method: "POST" }),
+  reprocessBackground: (id: string) => request<DocumentItem>(`/documents/${id}/reprocess/background`, { method: "POST" }),
   searchDocument: (id: string, query: string) => request<{ query: string; results: Array<{ page_number?: number | null; excerpt: string }> }>(`/documents/${id}/search?query=${encodeURIComponent(query)}`),
   previewDocument: (id: string) => request<DocumentPreview>(`/documents/${id}/preview`),
   async downloadDocument(id: string, filename: string) {

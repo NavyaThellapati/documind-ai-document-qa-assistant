@@ -131,8 +131,10 @@ small { color: var(--muted); }
 .message h3 { color: var(--primary); font-size: 1rem; }
 .markdown { line-height: 1.65; }
 .markdown pre, .markdown code { background: var(--panel-strong); border: 1px solid var(--border); border-radius: 8px; }
-.markdown pre { padding: 1rem; overflow-x: auto; }
+.markdown pre { padding: 1rem; overflow-x: auto; position: relative; }
 .markdown code { padding: .1rem .3rem; }
+.markdown pre code { display: block; border: 0; padding: 0; background: transparent; color: var(--text); }
+.markdown pre code[data-language]::before { content: attr(data-language); display: block; color: var(--muted); font-size: .72rem; text-transform: uppercase; margin-bottom: .5rem; }
 .sources { display: grid; gap: .5rem; margin-top: 1rem; }
 .sources details { background: var(--panel-strong); border: 1px solid var(--border); border-radius: 8px; padding: .75rem; }
 .sources summary { cursor: pointer; font-weight: 650; }

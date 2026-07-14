@@ -20,13 +20,13 @@ Example use cases:
 - Password hashing and basic password strength validation
 - User-specific document, vector, chat, and feedback isolation
 - PDF, TXT, and DOCX upload with extension, MIME, size, duplicate, empty-file, and extraction validation
-- Background document processing with `uploaded`, `processing`, `ready`, and `failed` statuses
+- Background document processing with `uploaded`, `queued`, `processing`, `ready`, and `failed` statuses
 - Text extraction, cleanup, chunking, page/chunk metadata, Sentence-Transformers embeddings, and ChromaDB persistence
 - RAG answering through OpenAI by default, optional Llama 3 compatible endpoint, and local extractive fallback for demos/tests
 - Prompt-injection-resistant prompt that treats uploaded text as untrusted reference data
-- Source citations with document name, page number when available, chunk number, excerpt, relevance score, and highlighted excerpt
-- Conversations, chat history, rename/delete actions, streaming chat endpoint, and answer feedback
-- Document list, search, preview, authenticated download, reprocess, delete, status filters, and dashboard statistics
+- Source citations with document name, page number when available, chunk number, excerpt, relevance score, highlighted excerpt, and document-preview jump links
+- Conversations, chat history, rename/delete actions, streaming chat endpoint, stop/regenerate/copy controls, markdown code rendering, and answer feedback
+- Document list, search, TXT/PDF/DOCX extracted-text preview, authenticated download, queued reprocess, delete, status filters, and dashboard statistics
 - Responsive React + TypeScript frontend with light/dark theme, toasts, loading states, and error states
 - Alembic migrations, Pytest backend tests, Vitest frontend tests, Dockerfiles, Docker Compose, Render/Railway/Vercel config, and GitHub Actions
 
@@ -100,6 +100,19 @@ Unsupported answer text is standardized:
 
 ```text
 I could not find this information in the uploaded documents.
+```
+
+## Document Processing Flow
+
+```mermaid
+stateDiagram-v2
+  [*] --> uploaded: Validate and save file
+  uploaded --> queued: Schedule background task
+  queued --> processing: Extract, chunk, embed
+  processing --> ready: Chunks stored in ChromaDB
+  processing --> failed: Extraction or indexing error
+  failed --> queued: Retry reprocess
+  ready --> queued: Reprocess
 ```
 
 ## Authentication Flow

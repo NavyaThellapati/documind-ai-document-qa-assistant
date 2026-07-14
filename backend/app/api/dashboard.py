@@ -42,11 +42,12 @@ def dashboard_summary(db: Session = Depends(get_db), current_user: User = Depend
         for convo in conversations.order_by(Conversation.updated_at.desc()).limit(5).all()
     ]
     ready_count = documents.filter(Document.status.in_(["ready", "processed"])).count()
+    in_progress_count = documents.filter(Document.status.in_(["queued", "uploaded", "processing"])).count()
     return DashboardSummary(
         total_documents=documents.count(),
         ready_documents=ready_count,
         processed_documents=ready_count,
-        processing_documents=documents.filter(Document.status == "processing").count(),
+        processing_documents=in_progress_count,
         failed_documents=documents.filter(Document.status == "failed").count(),
         total_chats=conversations.count(),
         questions_asked=question_count,

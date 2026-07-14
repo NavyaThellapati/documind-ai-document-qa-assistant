@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import os
 import re
 
 from app.core.config import get_settings
@@ -21,6 +22,7 @@ class VectorStoreService:
     def __init__(self) -> None:
         settings = get_settings()
         settings.chroma_dir.mkdir(parents=True, exist_ok=True)
+        os.environ.setdefault("ANONYMIZED_TELEMETRY", "False")
         import chromadb
         from chromadb.config import Settings
 

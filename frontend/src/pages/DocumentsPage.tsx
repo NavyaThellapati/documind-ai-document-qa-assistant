@@ -34,8 +34,8 @@ export function DocumentsPage() {
   }
   async function reprocess(id: string) {
     try {
-      await api.reprocess(id);
-      notify("Document reprocessing completed.", "success");
+      await api.reprocessBackground(id);
+      notify("Document queued for reprocessing.", "success");
       load();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Reprocess failed";
@@ -55,7 +55,7 @@ export function DocumentsPage() {
   return (
     <section className="page">
       <div className="page-title"><h1>Documents</h1><Link className="button" to="/upload">Upload</Link></div>
-      <div className="filters"><Search size={18} /><input placeholder="Search by name" value={search} onChange={(e) => setSearch(e.target.value)} /><select value={status} onChange={(e) => setStatus(e.target.value)}><option value="">All statuses</option><option value="ready">Ready</option><option value="uploaded">Uploaded</option><option value="failed">Failed</option><option value="processing">Processing</option></select></div>
+      <div className="filters"><Search size={18} /><input placeholder="Search by name" value={search} onChange={(e) => setSearch(e.target.value)} /><select value={status} onChange={(e) => setStatus(e.target.value)}><option value="">All statuses</option><option value="ready">Ready</option><option value="queued">Queued</option><option value="uploaded">Uploaded</option><option value="failed">Failed</option><option value="processing">Processing</option></select></div>
       {error && <div className="error">{error}</div>}
       <div className="table">
         {documents.length ? documents.map((doc) => (

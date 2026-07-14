@@ -34,11 +34,11 @@ async def upload_document(
     document, duplicate = await save_upload(db, current_user, file)
     if not duplicate and document.status != "processing":
         background_tasks.add_task(process_document_by_id, document.id)
-        document.status = "processing"
-        document.embedding_status = "processing"
+        document.status = "queued"
+        document.embedding_status = "queued"
         db.commit()
         db.refresh(document)
-    message = "Document already exists and was not processed again." if duplicate else "Document uploaded. Processing has started."
+    message = "Document already exists and was not processed again." if duplicate else "Document uploaded and queued for processing."
     return DocumentUploadResponse(document=document, duplicate=duplicate, message=message)
 
 
@@ -88,8 +88,8 @@ def reprocess_document_background(document_id: str, background_tasks: Background
     document = get_owned_document(db, current_user, document_id)
     if document.status == "processing":
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Document is already processing.")
-    document.status = "processing"
-    document.embedding_status = "processing"
+    document.status = "queued"
+    document.embedding_status = "queued"
     document.error_message = None
     db.commit()
     db.refresh(document)

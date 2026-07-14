@@ -191,9 +191,11 @@ async def ask_question_stream(payload: AskRequest, request: Request, db: Session
     async def stream_events():
         for token in re.findall(r"\S+\s*", result.answer):
             if await request.is_disconnected():
-                break
+                return
             yield f"event: token\ndata: {json.dumps({'token': token})}\n\n"
             await asyncio.sleep(0)
+        if await request.is_disconnected():
+            return
         yield f"event: done\ndata: {result.model_dump_json()}\n\n"
 
     return StreamingResponse(stream_events(), media_type="text/event-stream")

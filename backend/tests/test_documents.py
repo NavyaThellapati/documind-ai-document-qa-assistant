@@ -20,7 +20,7 @@ def test_document_upload_list_detail_delete(client, auth_headers):
     response = upload_txt(client, auth_headers)
     assert response.status_code == 201
     document = response.json()["document"]
-    assert document["status"] == "processing"
+    assert document["status"] == "queued"
 
     listed = client.get("/api/documents", headers=auth_headers)
     assert len(listed.json()["documents"]) == 1
@@ -40,6 +40,15 @@ def test_duplicate_upload_not_reprocessed(client, auth_headers):
     second = upload_txt(client, auth_headers)
     assert first.status_code == 201
     assert second.json()["duplicate"] is True
+
+
+def test_background_reprocess_returns_queued_status(client, auth_headers):
+    document = upload_txt(client, auth_headers).json()["document"]
+
+    response = client.post(f"/api/documents/{document['id']}/reprocess/background", headers=auth_headers)
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "queued"
 
 
 def test_same_name_different_content_gets_unique_storage_path(client, auth_headers):

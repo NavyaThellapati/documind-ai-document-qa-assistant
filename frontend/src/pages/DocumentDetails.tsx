@@ -19,11 +19,15 @@ export function DocumentDetails() {
     api.document(id).then(setDocument).catch((err) => setError(err.message));
     api.previewDocument(id).then(setPreview).catch(() => undefined);
   }, [id]);
+  useEffect(() => {
+    if (!preview || !sourceChunk) return;
+    globalThis.document.getElementById(`chunk-${sourceChunk}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [preview, sourceChunk]);
   async function reprocess() {
     if (!id) return;
     try {
-      setDocument(await api.reprocess(id));
-      notify("Document reprocessed.", "success");
+      setDocument(await api.reprocessBackground(id));
+      notify("Document queued for reprocessing.", "success");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Reprocess failed");
     }
@@ -59,6 +63,7 @@ export function DocumentDetails() {
         <div><span>Uploaded</span><strong>{new Date(document.created_at).toLocaleString()}</strong></div>
       </div>
       {document.error_message && <div className="error">{document.error_message}</div>}
+      {sourceChunk && <div className="success">Showing cited chunk {sourceChunk}. The highlighted card is the source used by the answer.</div>}
       <section className="panel">
         <h2>Search inside document</h2>
         <div className="filters"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Find text in this document" /><button onClick={search}>Search</button></div>

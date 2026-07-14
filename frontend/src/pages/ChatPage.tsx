@@ -5,8 +5,24 @@ import { Copy, Edit3, ExternalLink, MessageSquare, RefreshCw, Square, ThumbsDown
 import { api, ConversationSummary, DocumentItem, Message, Source } from "../api/client";
 import { useToast } from "../contexts/ToastContext";
 
+function Markdown({ children }: { children: string }) {
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={{
+        code({ className, children: codeChildren, ...props }) {
+          const language = /language-([A-Za-z0-9_-]+)/.exec(className ?? "")?.[1];
+          return <code className={className} data-language={language} {...props}>{codeChildren}</code>;
+        },
+      }}
+    >
+      {children}
+    </ReactMarkdown>
+  );
+}
+
 function SourceList({ sources }: { sources: Source[] }) {
-  return <div className="sources">{sources.map((source, index) => <details key={`${source.document_id}-${source.chunk_number}-${index}`}><summary>{source.document_name} {source.page_number ? `page ${source.page_number}` : ""} chunk {source.chunk_number} {source.relevance_score ? `confidence ${source.relevance_score}` : ""} {source.document_id && <a className="source-link" href={`/documents/${source.document_id}?chunk=${source.chunk_number}`}><ExternalLink size={14} /> View source</a>}</summary><ReactMarkdown remarkPlugins={[remarkGfm]}>{source.highlighted_excerpt || source.excerpt}</ReactMarkdown></details>)}</div>;
+  return <div className="sources">{sources.map((source, index) => <details key={`${source.document_id}-${source.chunk_number}-${index}`}><summary>{source.document_name} {source.page_number ? `page ${source.page_number}` : ""} chunk {source.chunk_number} {source.relevance_score ? `confidence ${source.relevance_score}` : ""} {source.document_id && <a className="source-link" href={`/documents/${source.document_id}?chunk=${source.chunk_number}#chunk-${source.chunk_number}`}><ExternalLink size={14} /> View source</a>}</summary><Markdown>{source.highlighted_excerpt || source.excerpt}</Markdown></details>)}</div>;
 }
 
 export function ChatPage() {
@@ -133,8 +149,8 @@ export function ChatPage() {
       <div className="chat-panel">
         <div className="messages">
           {messages.length === 0 && !loading && <div className="empty chat-empty"><MessageSquare size={34} /> Ask a question grounded in your documents.</div>}
-          {messages.map((message) => <article className="message" key={message.id}><h3>{message.question}</h3><div className="markdown"><ReactMarkdown remarkPlugins={[remarkGfm]}>{message.answer}</ReactMarkdown></div><SourceList sources={message.sources} /><div className="feedback"><button title="Copy" onClick={() => copyAnswer(message.answer)}><Copy size={16} /></button><button title="Regenerate" onClick={() => submitQuestion(message.question)}><RefreshCw size={16} /></button><button title="Helpful" onClick={() => api.feedback({ message_id: message.id, helpful: true }).then(() => notify("Feedback saved.", "success"))}><ThumbsUp size={16} /></button><button title="Not helpful" onClick={() => api.feedback({ message_id: message.id, helpful: false }).then(() => notify("Feedback saved.", "success"))}><ThumbsDown size={16} /></button></div></article>)}
-          {loading && <div className="message streaming"><div className="typing-dot" /><div className="markdown"><ReactMarkdown remarkPlugins={[remarkGfm]}>{draftAnswer || "Retrieving sources and generating an answer..."}</ReactMarkdown></div></div>}
+          {messages.map((message) => <article className="message" key={message.id}><h3>{message.question}</h3><div className="markdown"><Markdown>{message.answer}</Markdown></div><SourceList sources={message.sources} /><div className="feedback"><button title="Copy" onClick={() => copyAnswer(message.answer)}><Copy size={16} /></button><button title="Regenerate" onClick={() => submitQuestion(message.question)}><RefreshCw size={16} /></button><button title="Helpful" onClick={() => api.feedback({ message_id: message.id, helpful: true }).then(() => notify("Feedback saved.", "success"))}><ThumbsUp size={16} /></button><button title="Not helpful" onClick={() => api.feedback({ message_id: message.id, helpful: false }).then(() => notify("Feedback saved.", "success"))}><ThumbsDown size={16} /></button></div></article>)}
+          {loading && <div className="message streaming"><div className="typing-dot" /><div className="markdown"><Markdown>{draftAnswer || "Retrieving sources and generating an answer..."}</Markdown></div></div>}
           <div ref={bottomRef} />
         </div>
         {error && <div className="error">{error}</div>}
