@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, UploadFile, status
 from fastapi.responses import FileResponse
@@ -15,6 +16,14 @@ from app.services.text_processing import extract_text_sections, search_sections,
 from app.utils.files import ensure_within_directory
 
 router = APIRouter(prefix="/documents", tags=["documents"])
+
+
+def highlight_terms(text: str, query: str) -> str:
+    highlighted = text
+    terms = sorted({term for term in re.findall(r"[A-Za-z0-9]+", query) if len(term) > 2}, key=len, reverse=True)
+    for term in terms[:8]:
+        highlighted = re.sub(f"({re.escape(term)})", r"**\1**", highlighted, flags=re.IGNORECASE)
+    return highlighted
 
 
 def get_owned_document(db: Session, user: User, document_id: str) -> Document:
@@ -110,7 +119,10 @@ def download_document(document_id: str, db: Session = Depends(get_db), current_u
 def search_document(document_id: str, query: str = Query(min_length=2, max_length=200), db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     document = get_owned_document(db, current_user, document_id)
     sections = extract_text_sections(Path(document.file_path), Path(document.original_filename).suffix.lower())
-    results = [DocumentSearchResult(page_number=page, excerpt=excerpt) for page, excerpt in search_sections(sections, query)]
+    results = [
+        DocumentSearchResult(page_number=page, excerpt=excerpt, highlighted_excerpt=highlight_terms(excerpt, query))
+        for page, excerpt in search_sections(sections, query)
+    ]
     return DocumentSearchResponse(query=query, results=results)
 
 

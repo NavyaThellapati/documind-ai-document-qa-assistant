@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import logging
 import os
 import re
 
@@ -23,6 +24,7 @@ class VectorStoreService:
         settings = get_settings()
         settings.chroma_dir.mkdir(parents=True, exist_ok=True)
         os.environ.setdefault("ANONYMIZED_TELEMETRY", "False")
+        logging.getLogger("chromadb.telemetry.product.posthog").setLevel(logging.CRITICAL)
         import chromadb
         from chromadb.config import Settings
 

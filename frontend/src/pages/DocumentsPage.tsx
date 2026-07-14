@@ -61,9 +61,9 @@ export function DocumentsPage() {
         {documents.length ? documents.map((doc) => (
           <div className="table-row" key={doc.id}>
             <Link to={`/documents/${doc.id}`}>{doc.original_filename}</Link>
-            <span>{doc.status}</span>
+            <span>{doc.status} · {doc.processing_progress}%</span>
             <span>{doc.page_count ?? "?"} pages</span>
-            <span>{doc.embedding_status}</span>
+            <span>{doc.file_type.toUpperCase()} · {doc.embedding_status}</span>
             <button className="icon-button" title="Download" onClick={() => download(doc)}><Download size={16} /></button>
             <button className="icon-button" title="Reprocess" onClick={() => reprocess(doc.id)}><RefreshCw size={16} /></button>
             <button className="icon-button" title="Delete" onClick={() => remove(doc.id)}><Trash2 size={16} /></button>

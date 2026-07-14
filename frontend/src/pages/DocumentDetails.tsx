@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { Download, RotateCw, Search } from "lucide-react";
 import { api, DocumentItem, DocumentPreview } from "../api/client";
 import { useToast } from "../contexts/ToastContext";
@@ -11,7 +13,7 @@ export function DocumentDetails() {
   const [preview, setPreview] = useState<DocumentPreview | null>(null);
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<Array<{ page_number?: number | null; excerpt: string }>>([]);
+  const [results, setResults] = useState<Array<{ page_number?: number | null; excerpt: string; highlighted_excerpt?: string | null }>>([]);
   const { notify } = useToast();
   const sourceChunk = new URLSearchParams(location.search).get("chunk");
   useEffect(() => {
@@ -57,6 +59,8 @@ export function DocumentDetails() {
       <div className="detail-grid">
         <div><span>Status</span><strong>{document.status}</strong></div>
         <div><span>Embedding</span><strong>{document.embedding_status}</strong></div>
+        <div><span>Progress</span><strong>{document.processing_progress}%</strong></div>
+        <div><span>Type</span><strong>{document.file_type.toUpperCase()}</strong></div>
         <div><span>Chunks</span><strong>{document.chunk_count}</strong></div>
         <div><span>Pages</span><strong>{document.page_count ?? "Unknown"}</strong></div>
         <div><span>Size</span><strong>{Math.round(document.file_size / 1024)} KB</strong></div>
@@ -67,7 +71,7 @@ export function DocumentDetails() {
       <section className="panel">
         <h2>Search inside document</h2>
         <div className="filters"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Find text in this document" /><button onClick={search}>Search</button></div>
-        {results.length ? results.map((result, index) => <article className="search-hit" key={index}><strong>{result.page_number ? `Page ${result.page_number}` : "Document"}</strong><p>{result.excerpt}</p></article>) : <div className="empty">Search results will appear here.</div>}
+        {results.length ? results.map((result, index) => <article className="search-hit" key={index}><strong>{result.page_number ? `Page ${result.page_number}` : "Document"}</strong><ReactMarkdown remarkPlugins={[remarkGfm]}>{result.highlighted_excerpt || result.excerpt}</ReactMarkdown></article>) : <div className="empty">Search results will appear here.</div>}
       </section>
       <section className="panel">
         <h2>Extracted text preview</h2>

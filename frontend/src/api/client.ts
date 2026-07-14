@@ -13,6 +13,8 @@ export type DocumentItem = {
   processed_at?: string | null;
   created_at: string;
   updated_at: string;
+  file_type: string;
+  processing_progress: number;
 };
 export type Source = {
   id?: string | null;
@@ -119,7 +121,7 @@ export const api = {
   deleteDocument: (id: string) => request<void>(`/documents/${id}`, { method: "DELETE" }),
   reprocess: (id: string) => request<DocumentItem>(`/documents/${id}/reprocess`, { method: "POST" }),
   reprocessBackground: (id: string) => request<DocumentItem>(`/documents/${id}/reprocess/background`, { method: "POST" }),
-  searchDocument: (id: string, query: string) => request<{ query: string; results: Array<{ page_number?: number | null; excerpt: string }> }>(`/documents/${id}/search?query=${encodeURIComponent(query)}`),
+  searchDocument: (id: string, query: string) => request<{ query: string; results: Array<{ page_number?: number | null; excerpt: string; highlighted_excerpt?: string | null }> }>(`/documents/${id}/search?query=${encodeURIComponent(query)}`),
   previewDocument: (id: string) => request<DocumentPreview>(`/documents/${id}/preview`),
   async downloadDocument(id: string, filename: string) {
     const token = localStorage.getItem("documind_token");

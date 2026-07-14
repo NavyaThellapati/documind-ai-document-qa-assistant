@@ -1,5 +1,7 @@
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pathlib import Path
+
+from pydantic import BaseModel, Field, computed_field
 
 
 class DocumentRead(BaseModel):
@@ -19,6 +21,24 @@ class DocumentRead(BaseModel):
 
     model_config = {"from_attributes": True}
 
+    @computed_field
+    @property
+    def file_type(self) -> str:
+        return Path(self.original_filename).suffix.lower().lstrip(".") or self.content_type
+
+    @computed_field
+    @property
+    def processing_progress(self) -> int:
+        progress_by_status = {
+            "uploaded": 10,
+            "queued": 25,
+            "processing": 60,
+            "ready": 100,
+            "processed": 100,
+            "failed": 100,
+        }
+        return progress_by_status.get(self.status, 0)
+
 
 class DocumentList(BaseModel):
     documents: list[DocumentRead] = Field(default_factory=list)
@@ -33,6 +53,7 @@ class DocumentUploadResponse(BaseModel):
 class DocumentSearchResult(BaseModel):
     page_number: int | None = None
     excerpt: str
+    highlighted_excerpt: str | None = None
 
 
 class DocumentSearchResponse(BaseModel):

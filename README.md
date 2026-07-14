@@ -26,7 +26,7 @@ Example use cases:
 - Prompt-injection-resistant prompt that treats uploaded text as untrusted reference data
 - Source citations with document name, page number when available, chunk number, excerpt, relevance score, highlighted excerpt, and document-preview jump links
 - Conversations, chat history, rename/delete actions, streaming chat endpoint, stop/regenerate/copy controls, markdown code rendering, and answer feedback
-- Document list, search, TXT/PDF/DOCX extracted-text preview, authenticated download, queued reprocess, delete, status filters, and dashboard statistics
+- Document list, highlighted document search, TXT/PDF/DOCX extracted-text preview, authenticated download, queued reprocess, delete, status filters, progress indicators, and dashboard statistics
 - Responsive React + TypeScript frontend with light/dark theme, toasts, loading states, and error states
 - Alembic migrations, Pytest backend tests, Vitest frontend tests, Dockerfiles, Docker Compose, Render/Railway/Vercel config, and GitHub Actions
 

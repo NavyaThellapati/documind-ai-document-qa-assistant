@@ -24,6 +24,7 @@ def test_dashboard_health_document_search_and_download(client, auth_headers):
     search = client.get(f"/api/documents/{document['id']}/search?query=remote", headers=auth_headers)
     assert search.status_code == 200
     assert search.json()["results"]
+    assert "**Remote**" in search.json()["results"][0]["highlighted_excerpt"]
 
     preview = client.get(f"/api/documents/{document['id']}/preview", headers=auth_headers)
     assert preview.status_code == 200

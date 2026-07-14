@@ -21,6 +21,8 @@ def test_document_upload_list_detail_delete(client, auth_headers):
     assert response.status_code == 201
     document = response.json()["document"]
     assert document["status"] == "queued"
+    assert document["processing_progress"] == 25
+    assert document["file_type"] == "txt"
 
     listed = client.get("/api/documents", headers=auth_headers)
     assert len(listed.json()["documents"]) == 1
@@ -28,6 +30,7 @@ def test_document_upload_list_detail_delete(client, auth_headers):
     detail = client.get(f"/api/documents/{document['id']}", headers=auth_headers)
     assert detail.status_code == 200
     assert detail.json()["status"] == "ready"
+    assert detail.json()["processing_progress"] == 100
     assert detail.json()["chunk_count"] >= 1
 
     deleted = client.delete(f"/api/documents/{document['id']}", headers=auth_headers)
