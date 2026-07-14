@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 import hashlib
+import logging
 import secrets
 from typing import Any
 from uuid import uuid4
@@ -9,6 +10,7 @@ from passlib.context import CryptContext
 from app.core.config import get_settings
 
 
+logging.getLogger("passlib.handlers.bcrypt").setLevel(logging.ERROR)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 

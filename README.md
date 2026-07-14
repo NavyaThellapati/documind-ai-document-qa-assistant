@@ -162,13 +162,15 @@ documind-ai-document-qa-assistant/
 
 ## Local Installation
 
-Create the environment file:
+DocuMind runs locally with SQLite by default, so a fresh clone does not require PostgreSQL unless you want to test the production database path.
+
+Create the environment file from the repository root:
 
 ```bash
 cp .env.example .env
 ```
 
-Backend:
+Backend with SQLite:
 
 ```bash
 cd backend
@@ -179,7 +181,7 @@ alembic upgrade head
 uvicorn app.main:app --reload
 ```
 
-Frontend:
+Frontend in a second terminal:
 
 ```bash
 cd frontend
@@ -193,11 +195,25 @@ Local URLs:
 - Backend health: [http://localhost:8000/api/health](http://localhost:8000/api/health)
 - Swagger/OpenAPI: [http://localhost:8000/api/docs](http://localhost:8000/api/docs)
 
+For a completely offline local demo, set this in `.env` before uploading documents:
+
+```bash
+EMBEDDING_MODEL=hashing
+```
+
+For local PostgreSQL instead of SQLite, set:
+
+```bash
+DATABASE_URL=postgresql+psycopg://documind:documind@localhost:5432/documind
+```
+
+Then create the database/user in PostgreSQL and run `alembic upgrade head` again.
+
 ## Environment Variables
 
 | Variable | Purpose |
 | --- | --- |
-| `DATABASE_URL` | PostgreSQL or local SQLite URL |
+| `DATABASE_URL` | Local SQLite URL by default, or PostgreSQL URL for production |
 | `JWT_SECRET` | Secret used to sign JWT access tokens |
 | `REFRESH_TOKEN_EXPIRE_DAYS` | Refresh token lifetime |
 | `OPENAI_API_KEY` | OpenAI key for generated answers |
@@ -216,7 +232,7 @@ Local URLs:
 | `MAX_UPLOAD_SIZE_MB` | Upload size limit |
 | `UPLOAD_DIR` | File storage directory |
 | `CHROMA_DIR` | Chroma persistence directory |
-| `CORS_ORIGINS` | Allowed frontend origins |
+| `CORS_ORIGINS` | Allowed frontend origins as JSON array or comma-separated list |
 | `VITE_API_URL` | Frontend build-time API URL |
 
 Never commit `.env`, real API keys, database credentials, or JWT secrets.
@@ -227,6 +243,8 @@ Never commit `.env`, real API keys, database credentials, or JWT secrets.
 cd backend
 alembic upgrade head
 ```
+
+If `/api/health` reports missing tables, migrations have not been applied for the active `DATABASE_URL`.
 
 Current migrations:
 
@@ -240,6 +258,8 @@ Current migrations:
 cp .env.example .env
 docker compose up --build
 ```
+
+Docker Compose overrides `DATABASE_URL` for the backend container so it uses the bundled PostgreSQL service. The local `.env.example` default remains SQLite for non-Docker development.
 
 Services:
 
@@ -290,6 +310,14 @@ npm run lint
 npm test
 npm run build
 ```
+
+## Troubleshooting
+
+- **Backend starts but `/api/health` says migrations are missing**: run `cd backend && alembic upgrade head` using the same `.env`/`DATABASE_URL`.
+- **Backend cannot connect to PostgreSQL**: use the default SQLite `DATABASE_URL=sqlite:///./documind.db` for local development, or start PostgreSQL before running migrations.
+- **Frontend cannot reach the API**: set `VITE_API_URL=http://localhost:8000/api` in `.env` and restart `npm run dev`.
+- **Document processing is slow on first run**: Sentence-Transformers may download a model. Use `EMBEDDING_MODEL=hashing` for offline smoke tests.
+- **CORS errors in the browser**: make sure `CORS_ORIGINS` includes the exact frontend origin, for example `http://localhost:5173`.
 
 External LLM calls are mocked in tests so the suite can run without API credits.
 

@@ -1,4 +1,5 @@
 from functools import lru_cache
+import json
 from pathlib import Path
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -7,7 +8,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     app_name: str = "DocuMind API"
     environment: str = "development"
-    database_url: str = "postgresql+psycopg://documind:documind@localhost:5432/documind"
+    database_url: str = "sqlite:///./documind.db"
     jwt_secret: str = Field(default="change-me-in-production", min_length=16)
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60 * 24
@@ -24,13 +25,25 @@ class Settings(BaseSettings):
     max_upload_size_mb: int = 15
     upload_dir: Path = Path("uploads")
     chroma_dir: Path = Path("chroma_data")
-    cors_origins: list[str] = ["http://localhost:5173", "http://localhost:3000"]
+    cors_origins: str = '["http://localhost:5173","http://localhost:3000"]'
     auth_rate_limit_per_minute: int = 10
     chat_rate_limit_per_minute: int = 20
     llm_timeout_seconds: int = 30
     min_relevance_score: float = 0.05
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        value = self.cors_origins.strip()
+        if not value:
+            return []
+        if value.startswith("["):
+            parsed = json.loads(value)
+            if not isinstance(parsed, list) or not all(isinstance(origin, str) for origin in parsed):
+                raise ValueError("CORS_ORIGINS must be a JSON array of strings or a comma-separated list.")
+            return parsed
+        return [origin.strip() for origin in value.split(",") if origin.strip()]
 
     @property
     def max_upload_bytes(self) -> int:
@@ -41,7 +54,7 @@ class Settings(BaseSettings):
         if self.environment.lower() == "production":
             if self.jwt_secret == "change-me-in-production":
                 raise ValueError("JWT_SECRET must be set to a strong unique value in production.")
-            localhost_origins = [origin for origin in self.cors_origins if "localhost" in origin or "127.0.0.1" in origin]
+            localhost_origins = [origin for origin in self.cors_origin_list if "localhost" in origin or "127.0.0.1" in origin]
             if localhost_origins:
                 raise ValueError("CORS_ORIGINS must not include localhost origins in production.")
         return self

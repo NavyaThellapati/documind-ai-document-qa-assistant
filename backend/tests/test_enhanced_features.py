@@ -19,6 +19,8 @@ def test_dashboard_health_document_search_and_download(client, auth_headers):
 
     health = client.get("/api/health")
     assert health.status_code == 200
+    assert health.json()["environment"] == "development"
+    assert health.json()["version"] == "1.0.0"
     assert "database" in health.json()["checks"]
 
     search = client.get(f"/api/documents/{document['id']}/search?query=remote", headers=auth_headers)

@@ -18,6 +18,8 @@ services:
   backend:
     build: ./backend
     env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://documind:documind@postgres:5432/documind
     ports:
       - "8000:8000"
     volumes:
