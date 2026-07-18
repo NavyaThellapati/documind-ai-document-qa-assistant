@@ -31,6 +31,6 @@ describe("ChatPage", () => {
     await userEvent.type(screen.getByPlaceholderText(/ask a question/i), "What is in the guide?");
     await userEvent.click(screen.getByRole("button", { name: /ask/i }));
     expect((await screen.findAllByText("Grounded answer")).length).toBeGreaterThan(0);
-    expect(screen.getByText(/View source/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/View source/i).length).toBeGreaterThan(0);
   });
 });

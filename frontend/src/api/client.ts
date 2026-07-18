@@ -142,7 +142,18 @@ export const api = {
     anchor.remove();
     URL.revokeObjectURL(url);
   },
-  conversations: () => request<ConversationSummary[]>("/chat/conversations"),
+  async documentObjectUrl(id: string) {
+    const token = localStorage.getItem("documind_token");
+    const response = await fetch(`${API_URL}/documents/${id}/download`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({ detail: "Preview failed" }));
+      throw new ApiError(response.status, errorMessage(payload.detail));
+    }
+    return URL.createObjectURL(await response.blob());
+  },
+  conversations: (params = "") => request<ConversationSummary[]>(`/chat/conversations${params}`),
   conversation: (id: string) => request<Conversation>(`/chat/conversations/${id}`),
   createConversation: (title: string) => request<Conversation>("/chat/conversations", { method: "POST", body: JSON.stringify({ title }) }),
   renameConversation: (id: string, title: string) =>

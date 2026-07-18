@@ -334,14 +334,15 @@ The report is written to `backend/evaluation/evaluation_report.json`. Use only m
 
 ## Screenshots
 
-Add portfolio screenshots after running locally:
+Recommended portfolio captures after running locally:
 
-- Dashboard
-- Upload progress
-- Document details and preview
-- Chat with citations
-- Dark mode
-- API docs
+- Dashboard with document statistics and processing status
+- Upload flow with validation and progress states
+- Document details with preview, chunk cards, metadata, and search
+- Chat workspace with citations and the research side panel
+- Conversation history search and saved answers
+- Dark mode and responsive mobile layout
+- FastAPI Swagger documentation
 
 ## Known Limitations
 

@@ -1,7 +1,7 @@
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Copy, Edit3, ExternalLink, MessageSquare, RefreshCw, Square, ThumbsDown, ThumbsUp, Trash2 } from "lucide-react";
+import { Bot, Copy, Edit3, MessageSquare, RefreshCw, Search, Square, ThumbsDown, ThumbsUp, Trash2, UserCircle } from "lucide-react";
 import { api, ConversationSummary, DocumentItem, Message, Source } from "../api/client";
 import { useToast } from "../contexts/ToastContext";
 
@@ -22,8 +22,26 @@ function Markdown({ children }: { children: string }) {
 }
 
 function SourceList({ sources }: { sources: Source[] }) {
-  return <div className="sources">{sources.map((source, index) => <details key={`${source.document_id}-${source.chunk_number}-${index}`}><summary>{source.document_name} {source.page_number ? `page ${source.page_number}` : ""} chunk {source.chunk_number} {source.relevance_score ? `confidence ${source.relevance_score}` : ""} {source.document_id && <a className="source-link" href={`/documents/${source.document_id}?chunk=${source.chunk_number}#chunk-${source.chunk_number}`}><ExternalLink size={14} /> View source</a>}</summary><Markdown>{source.highlighted_excerpt || source.excerpt}</Markdown></details>)}</div>;
+  return (
+    <div className="source-card-grid">
+      {sources.map((source, index) => {
+        const content = <><span>Source {index + 1}</span><strong>{source.document_name}</strong><small>{source.page_number ? `Page ${source.page_number}` : "Page unavailable"} · Chunk {source.chunk_number} · View source</small>{source.relevance_score ? <em>{Math.round(source.relevance_score * 100)}% match</em> : null}</>;
+        return source.document_id ? (
+          <a className="source-card" key={`${source.document_id}-${source.chunk_number}-${index}`} href={`/documents/${source.document_id}?chunk=${source.chunk_number}#chunk-${source.chunk_number}`}>{content}</a>
+        ) : (
+          <div className="source-card" key={`${source.document_name}-${source.chunk_number}-${index}`}>{content}</div>
+        );
+      })}
+    </div>
+  );
 }
+
+const suggestedQuestions = [
+  "Summarize this document.",
+  "What are the key requirements?",
+  "What decisions or policies are mentioned?",
+  "Which sections should I review first?",
+];
 
 export function ChatPage() {
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
@@ -36,10 +54,16 @@ export function ChatPage() {
   const [error, setError] = useState("");
   const [loadingLists, setLoadingLists] = useState(true);
   const [draftAnswer, setDraftAnswer] = useState("");
+  const [historySearch, setHistorySearch] = useState("");
   const lastQuestion = useRef("");
   const abortRef = useRef<AbortController | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const { notify } = useToast();
+  const latestSources = useMemo(() => [...messages].reverse().find((message) => message.sources.length)?.sources ?? [], [messages]);
+  const filteredConversations = useMemo(
+    () => conversations.filter((conversation) => conversation.title.toLowerCase().includes(historySearch.toLowerCase())),
+    [conversations, historySearch],
+  );
   function loadConversations() { api.conversations().then(setConversations).catch((err) => setError(err.message)); }
   useEffect(() => {
     setLoadingLists(true);
@@ -138,24 +162,37 @@ export function ChatPage() {
     <section className="page chat-layout pro-chat">
       <aside className="conversation-sidebar">
         <button className="button full" onClick={() => { setConversationId(undefined); setMessages([]); }}><MessageSquare size={16} /> New chat</button>
+        <label className="compact-search"><Search size={15} /><input aria-label="Search chat history" placeholder="Search history" value={historySearch} onChange={(event) => setHistorySearch(event.target.value)} /></label>
         {loadingLists && <div className="empty compact-empty">Loading conversations...</div>}
-        {conversations.map((conversation) => <div className={`conversation-row ${conversation.id === conversationId ? "active" : ""}`} key={conversation.id}><button onClick={() => openConversation(conversation.id)}>{conversation.title}</button><button title="Rename" onClick={() => renameConversation(conversation.id)}><Edit3 size={14} /></button><button title="Delete" onClick={() => deleteConversation(conversation.id)}><Trash2 size={14} /></button></div>)}
-      </aside>
-      <aside className="document-picker">
-        <h2>Scope</h2>
-        {loadingLists ? <div className="empty compact-empty">Loading documents...</div> : documents.length ? documents.map((doc) => <label key={doc.id}><input type="checkbox" checked={selected.includes(doc.id)} onChange={() => toggle(doc.id)} />{doc.original_filename}</label>) : <div className="empty">Upload ready documents before chatting.</div>}
-        <span>{selected.length === 0 ? "All ready documents selected" : `${selected.length} selected`}</span>
+        {filteredConversations.map((conversation) => <div className={`conversation-row ${conversation.id === conversationId ? "active" : ""}`} key={conversation.id}><button onClick={() => openConversation(conversation.id)}>{conversation.title}</button><button aria-label={`Rename ${conversation.title}`} title="Rename" onClick={() => renameConversation(conversation.id)}><Edit3 size={14} /></button><button aria-label={`Delete ${conversation.title}`} title="Delete" onClick={() => deleteConversation(conversation.id)}><Trash2 size={14} /></button></div>)}
+        {!loadingLists && !filteredConversations.length && <div className="empty compact-empty">No conversations found.</div>}
       </aside>
       <div className="chat-panel">
+        <div className="chat-hero">
+          <div><span className="eyebrow">Grounded AI assistant</span><h1>Ask your documents anything.</h1><p>Answers are constrained to uploaded content and linked back to source chunks.</p></div>
+        </div>
         <div className="messages">
           {messages.length === 0 && !loading && <div className="empty chat-empty"><MessageSquare size={34} /> Ask a question grounded in your documents.</div>}
-          {messages.map((message) => <article className="message" key={message.id}><h3>{message.question}</h3><div className="markdown"><Markdown>{message.answer}</Markdown></div><SourceList sources={message.sources} /><div className="feedback"><button title="Copy" onClick={() => copyAnswer(message.answer)}><Copy size={16} /></button><button title="Regenerate" onClick={() => submitQuestion(message.question)}><RefreshCw size={16} /></button><button title="Helpful" onClick={() => api.feedback({ message_id: message.id, helpful: true }).then(() => notify("Feedback saved.", "success"))}><ThumbsUp size={16} /></button><button title="Not helpful" onClick={() => api.feedback({ message_id: message.id, helpful: false }).then(() => notify("Feedback saved.", "success"))}><ThumbsDown size={16} /></button></div></article>)}
-          {loading && <div className="message streaming"><div className="typing-dot" /><div className="markdown"><Markdown>{draftAnswer || "Retrieving sources and generating an answer..."}</Markdown></div></div>}
+          {messages.map((message) => <article className="message-thread" key={message.id}><div className="bubble user-bubble"><span className="avatar user-avatar"><UserCircle size={18} /></span><div><h3>{message.question}</h3></div></div><div className="bubble assistant-bubble"><span className="avatar assistant-avatar"><Bot size={18} /></span><div><div className="markdown"><Markdown>{message.answer}</Markdown></div><SourceList sources={message.sources} /><div className="feedback"><button aria-label="Copy answer" title="Copy" onClick={() => copyAnswer(message.answer)}><Copy size={16} /></button><button aria-label="Regenerate answer" title="Regenerate" onClick={() => submitQuestion(message.question)}><RefreshCw size={16} /></button><button aria-label="Mark helpful" title="Helpful" onClick={() => api.feedback({ message_id: message.id, helpful: true }).then(() => notify("Feedback saved.", "success"))}><ThumbsUp size={16} /></button><button aria-label="Mark not helpful" title="Not helpful" onClick={() => api.feedback({ message_id: message.id, helpful: false }).then(() => notify("Feedback saved.", "success"))}><ThumbsDown size={16} /></button></div></div></div></article>)}
+          {loading && <div className="bubble assistant-bubble streaming"><span className="avatar assistant-avatar"><Bot size={18} /></span><div><div className="typing-line"><span className="typing-dot" /><span className="typing-dot" /><span className="typing-dot" /></div><div className="markdown"><Markdown>{draftAnswer || "Retrieving sources and generating an answer..."}</Markdown></div></div></div>}
           <div ref={bottomRef} />
         </div>
         {error && <div className="error">{error}</div>}
+        {!messages.length && <div className="suggestion-row">{suggestedQuestions.map((suggestion) => <button type="button" className="suggestion-chip" key={suggestion} onClick={() => setQuestion(suggestion)}>{suggestion}</button>)}</div>}
         <form className="ask-box" onSubmit={ask}><textarea value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Ask a question about your uploaded documents" required />{loading ? <button type="button" onClick={stopGeneration}><Square size={16} /> Stop</button> : <button disabled={loadingLists}>Ask</button>}</form>
       </div>
+      <aside className="document-picker research-panel">
+        <h2>Research panel</h2>
+        <section>
+          <h3>Document scope</h3>
+          {loadingLists ? <div className="empty compact-empty">Loading documents...</div> : documents.length ? documents.map((doc) => <label key={doc.id}><input type="checkbox" checked={selected.includes(doc.id)} onChange={() => toggle(doc.id)} /> <span>{doc.original_filename}<small>{doc.file_type?.toUpperCase?.() || "DOC"} · {doc.chunk_count ?? 0} chunks</small></span></label>) : <div className="empty">Upload ready documents before chatting.</div>}
+          <span>{selected.length === 0 ? "All ready documents selected" : `${selected.length} selected`}</span>
+        </section>
+        <section>
+          <h3>Latest sources</h3>
+          {latestSources.length ? <SourceList sources={latestSources} /> : <div className="empty compact-empty">Sources appear after an answer.</div>}
+        </section>
+      </aside>
     </section>
   );
 }
