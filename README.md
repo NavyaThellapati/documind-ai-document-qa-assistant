@@ -2,6 +2,22 @@
 
 DocuMind is a production-style portfolio project for document-grounded question answering. Users can register, upload PDF/TXT/DOCX documents, ask questions over one or more documents, and receive answers constrained to the uploaded content with source citations.
 
+## Live Demo
+
+Deployment URLs have not been added yet.
+
+- Frontend: TODO - add the deployed Vercel or Render frontend URL.
+- API Docs: TODO - add the deployed backend `/api/docs` URL.
+
+## Why This Project?
+
+- Demonstrates full-stack application development with a FastAPI backend and React + TypeScript frontend.
+- Implements Retrieval-Augmented Generation (RAG) with vector search and source citations.
+- Shows AI-powered document understanding through summaries, semantic search, and grounded chat.
+- Includes secure JWT authentication, password hashing, protected routes, and user data isolation.
+- Uses PostgreSQL, SQLAlchemy, Alembic migrations, ChromaDB, Docker, and CI checks.
+- Presents production-minded architecture with validation, rate limiting, error handling, and deployment configuration.
+
 ## Business Problem
 
 Teams often store important policies, product guides, support articles, and operating procedures across static documents. Generic chatbots can answer confidently from outside knowledge, which creates trust and compliance problems. DocuMind demonstrates a safer Retrieval-Augmented Generation pattern: retrieve relevant document sections, send only those sections to the model, and return citations so a user can verify the answer.
@@ -29,6 +45,22 @@ Example use cases:
 - Document list, highlighted document search, TXT/PDF/DOCX extracted-text preview, authenticated download, queued reprocess, delete, status filters, progress indicators, and dashboard statistics
 - Responsive React + TypeScript frontend with light/dark theme, toasts, loading states, and error states
 - Alembic migrations, Pytest backend tests, Vitest frontend tests, Dockerfiles, Docker Compose, Render/Railway/Vercel config, and GitHub Actions
+
+## Project Features
+
+| Feature | Status |
+| --- | --- |
+| Authentication | ✅ |
+| Document Upload | ✅ |
+| AI Summarization | ✅ |
+| Semantic Search | ✅ |
+| RAG Chat | ✅ |
+| Source Citations | ✅ |
+| Document Preview | ✅ |
+| Chunk Viewer | ✅ |
+| Responsive UI | ✅ |
+| Dark Mode | ✅ |
+| Docker | ✅ |
 
 ## Tech Stack
 
@@ -153,12 +185,26 @@ documind-ai-document-qa-assistant/
 ├── frontend/
 │   └── src/
 ├── .github/workflows/
+├── uploads/              # Created at runtime; ignored by Git
+├── screenshots/          # Recommended portfolio screenshots; not committed yet
 ├── docker-compose.yml
 ├── render.yaml
 ├── .env.example
 ├── .gitignore
 └── README.md
 ```
+
+Purpose of important paths:
+
+| Path | Purpose |
+| --- | --- |
+| `backend/` | FastAPI app, SQLAlchemy models, Alembic migrations, document processing, RAG services, tests, evaluation scripts, and sample documents. |
+| `frontend/` | React + TypeScript app, routing, authenticated API client, document dashboard, upload flow, document overview, chat, history, and theme support. |
+| `.github/` | GitHub Actions workflow for installing dependencies, running checks, and building the project. |
+| `docker/` | Optional conventional location for Docker helper files; this repo currently keeps Dockerfiles in `backend/` and `frontend/` plus root `docker-compose.yml`. |
+| `uploads/` | Local development storage created at runtime for uploaded files; ignored by Git and replaceable with cloud storage later. |
+| `screenshots/` | Recommended location for portfolio screenshots following the user journey; no screenshot files are currently committed. |
+| `README.md` | Main portfolio documentation, setup instructions, architecture diagrams, deployment notes, and testing guidance. |
 
 ## Local Installation
 
@@ -251,6 +297,8 @@ Current migrations:
 - `0001_initial`: users, documents, conversations, messages, sources, feedback
 - `0002_refresh_document_metadata`: refresh tokens, page count, embedding status, processed timestamp
 - `0003_ready_document_status`: normalizes legacy `processed` status rows to `ready`
+- `0004_document_insights`: caches generated document intelligence summaries
+- `0005_summary_length_cache`: caches summaries separately for brief, standard, and detailed lengths
 
 ## Docker
 
@@ -334,15 +382,37 @@ The report is written to `backend/evaluation/evaluation_report.json`. Use only m
 
 ## Screenshots
 
-Recommended portfolio captures after running locally:
+No screenshot files are currently committed. Add screenshots under `screenshots/` after running the app locally or deploying it.
 
-- Dashboard with document statistics and processing status
-- Upload flow with validation and progress states
-- Document details with preview, chunk cards, metadata, and search
-- Chat workspace with citations and the research side panel
-- Conversation history search and saved answers
-- Dark mode and responsive mobile layout
-- FastAPI Swagger documentation
+Screenshot guidelines:
+
+- Use the same image width for every screenshot.
+- Use descriptive alt text if adding Markdown image tags.
+- Add a short caption underneath each image.
+- Keep the order aligned with the user journey.
+- Verify every image path renders on GitHub before committing screenshots.
+
+Recommended screenshot sequence:
+
+| Order | Screenshot | Suggested file | Caption |
+| --- | --- | --- | --- |
+| 1 | Login | `screenshots/01-login.png` | User login screen with DocuMind branding. |
+| 2 | Dashboard | `screenshots/02-dashboard.png` | Dashboard with document statistics and recent activity. |
+| 3 | Upload | `screenshots/03-upload.png` | Document upload flow with validation and progress states. |
+| 4 | Overview | `screenshots/04-document-overview.png` | Document overview with summary, key points, entities, and suggested questions. |
+| 5 | Chat | `screenshots/05-chat-citations.png` | RAG chat answer with source citations. |
+| 6 | Preview | `screenshots/06-preview.png` | PDF or extracted text preview. |
+| 7 | Search | `screenshots/07-search.png` | Document search with highlighted matches. |
+| 8 | Chunk Viewer | `screenshots/08-chunk-viewer.png` | Technical chunk viewer with expandable chunk cards. |
+| 9 | Dark Mode | `screenshots/09-dark-mode.png` | Dark theme applied across the main workspace. |
+| 10 | Swagger | `screenshots/10-swagger.png` | FastAPI Swagger documentation at `/api/docs`. |
+
+When screenshot files are added, use this accessible format:
+
+```markdown
+![Login screen with DocuMind branding](screenshots/01-login.png)
+Caption: User login screen with DocuMind branding.
+```
 
 ## Known Limitations
 
@@ -351,6 +421,10 @@ Recommended portfolio captures after running locally:
 - The streaming endpoint streams the generated answer after retrieval/model completion; direct provider token streaming can be added.
 - In-memory rate limiting resets on process restart.
 - JWT storage uses `localStorage`; a hardened product should use HTTP-only cookies.
+
+## License
+
+No `LICENSE` file is currently included. Add an MIT License before publishing or distributing the project broadly.
 
 ## Future Roadmap
 
