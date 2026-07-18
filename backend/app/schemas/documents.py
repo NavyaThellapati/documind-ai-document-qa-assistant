@@ -76,3 +76,28 @@ class DocumentPreviewResponse(BaseModel):
     document: DocumentRead
     sections: list[DocumentPreviewSection] = Field(default_factory=list)
     chunks: list[DocumentPreviewChunk] = Field(default_factory=list)
+
+
+class DocumentInsightSource(BaseModel):
+    page_number: int | None = None
+    chunk_number: int
+    excerpt: str
+
+
+class DocumentInsightResponse(BaseModel):
+    id: str
+    document_id: str
+    status: str
+    overview: str
+    summary: str
+    key_points: list[str] = Field(default_factory=list)
+    main_sections: list[str] = Field(default_factory=list)
+    key_entities: list[str] = Field(default_factory=list)
+    suggested_questions: list[str] = Field(default_factory=list)
+    sources: list[DocumentInsightSource] = Field(default_factory=list)
+    notice: str | None = None
+    llm_configured: bool = False
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}

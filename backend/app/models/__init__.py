@@ -1,3 +1,3 @@
-from app.models.entities import Conversation, Document, Feedback, Message, RefreshToken, Source, User
+from app.models.entities import Conversation, Document, DocumentInsight, Feedback, Message, RefreshToken, Source, User
 
-__all__ = ["Conversation", "Document", "Feedback", "Message", "RefreshToken", "Source", "User"]
+__all__ = ["Conversation", "Document", "DocumentInsight", "Feedback", "Message", "RefreshToken", "Source", "User"]

@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import uuid4
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 
@@ -65,6 +65,26 @@ class Document(Base, TimestampMixin):
     processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     owner: Mapped[User] = relationship(back_populates="documents")
+    insight: Mapped["DocumentInsight | None"] = relationship(back_populates="document", cascade="all, delete-orphan", uselist=False)
+
+
+class DocumentInsight(Base, TimestampMixin):
+    __tablename__ = "document_insights"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uuid_str)
+    document_id: Mapped[str] = mapped_column(ForeignKey("documents.id", ondelete="CASCADE"), unique=True, index=True, nullable=False)
+    status: Mapped[str] = mapped_column(String(40), default="ready", nullable=False)
+    overview: Mapped[str] = mapped_column(Text, nullable=False)
+    summary: Mapped[str] = mapped_column(Text, nullable=False)
+    key_points: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
+    main_sections: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
+    key_entities: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
+    suggested_questions: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
+    sources: Mapped[list[dict]] = mapped_column(JSON, default=list, nullable=False)
+    notice: Mapped[str | None] = mapped_column(Text)
+    llm_configured: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+    document: Mapped[Document] = relationship(back_populates="insight")
 
 
 class Conversation(Base, TimestampMixin):

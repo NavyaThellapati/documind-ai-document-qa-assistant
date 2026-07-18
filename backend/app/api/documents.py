@@ -9,9 +9,10 @@ from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.core.config import get_settings
 from app.models import Document, User
-from app.schemas.documents import DocumentList, DocumentPreviewChunk, DocumentPreviewResponse, DocumentPreviewSection, DocumentRead, DocumentSearchResponse, DocumentSearchResult, DocumentUploadResponse
+from app.schemas.documents import DocumentInsightResponse, DocumentList, DocumentPreviewChunk, DocumentPreviewResponse, DocumentPreviewSection, DocumentRead, DocumentSearchResponse, DocumentSearchResult, DocumentUploadResponse
 from app.services.documents import delete_document as delete_document_service
 from app.services.documents import process_document, process_document_by_id, save_upload
+from app.services.document_intelligence import get_or_create_document_insight
 from app.services.text_processing import extract_text_sections, search_sections, split_sections
 from app.utils.files import ensure_within_directory
 
@@ -137,3 +138,21 @@ def preview_document(document_id: str, db: Session = Depends(get_db), current_us
         sections=[DocumentPreviewSection(page_number=section.page_number, text=section.text) for section in sections],
         chunks=[DocumentPreviewChunk(page_number=chunk.page_number, chunk_number=chunk.chunk_number, text=chunk.text) for chunk in chunks],
     )
+
+
+@router.get("/{document_id}/insight", response_model=DocumentInsightResponse)
+def get_document_insight(document_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    document = get_owned_document(db, current_user, document_id)
+    try:
+        return get_or_create_document_insight(db, document)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+
+@router.post("/{document_id}/explain", response_model=DocumentInsightResponse)
+def explain_document(document_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    document = get_owned_document(db, current_user, document_id)
+    try:
+        return get_or_create_document_insight(db, document, force=True)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc

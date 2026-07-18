@@ -76,6 +76,9 @@ def process_document(db: Session, document: Document) -> Document:
         chunks = split_sections(sections, settings.chunk_size, settings.chunk_overlap)
         if not chunks:
             raise ValueError("No readable text was found in this document.")
+        if document.insight:
+            db.delete(document.insight)
+            db.flush()
         vector_store = get_vector_store()
         vector_store.delete_document(document.user_id, document.id)
         vector_store.upsert_document_chunks(document.user_id, document.id, document.original_filename, chunks)

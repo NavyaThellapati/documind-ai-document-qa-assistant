@@ -47,6 +47,22 @@ export type DocumentPreview = {
   sections: Array<{ page_number?: number | null; text: string }>;
   chunks: Array<{ page_number?: number | null; chunk_number: number; text: string }>;
 };
+export type DocumentInsight = {
+  id: string;
+  document_id: string;
+  status: string;
+  overview: string;
+  summary: string;
+  key_points: string[];
+  main_sections: string[];
+  key_entities: string[];
+  suggested_questions: string[];
+  sources: Array<{ page_number?: number | null; chunk_number: number; excerpt: string }>;
+  notice?: string | null;
+  llm_configured: boolean;
+  created_at: string;
+  updated_at: string;
+};
 
 const API_URL = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -123,6 +139,8 @@ export const api = {
   reprocessBackground: (id: string) => request<DocumentItem>(`/documents/${id}/reprocess/background`, { method: "POST" }),
   searchDocument: (id: string, query: string) => request<{ query: string; results: Array<{ page_number?: number | null; excerpt: string; highlighted_excerpt?: string | null }> }>(`/documents/${id}/search?query=${encodeURIComponent(query)}`),
   previewDocument: (id: string) => request<DocumentPreview>(`/documents/${id}/preview`),
+  documentInsight: (id: string) => request<DocumentInsight>(`/documents/${id}/insight`),
+  explainDocument: (id: string) => request<DocumentInsight>(`/documents/${id}/explain`, { method: "POST" }),
   async downloadDocument(id: string, filename: string) {
     const token = localStorage.getItem("documind_token");
     const response = await fetch(`${API_URL}/documents/${id}/download`, {
