@@ -65,14 +65,17 @@ class Document(Base, TimestampMixin):
     processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     owner: Mapped[User] = relationship(back_populates="documents")
-    insight: Mapped["DocumentInsight | None"] = relationship(back_populates="document", cascade="all, delete-orphan", uselist=False)
+    insights: Mapped[list["DocumentInsight"]] = relationship(back_populates="document", cascade="all, delete-orphan")
 
 
 class DocumentInsight(Base, TimestampMixin):
     __tablename__ = "document_insights"
+    __table_args__ = (UniqueConstraint("document_id", "summary_length", name="uq_document_insights_document_length"),)
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uuid_str)
-    document_id: Mapped[str] = mapped_column(ForeignKey("documents.id", ondelete="CASCADE"), unique=True, index=True, nullable=False)
+    document_id: Mapped[str] = mapped_column(ForeignKey("documents.id", ondelete="CASCADE"), index=True, nullable=False)
+    summary_length: Mapped[str] = mapped_column(String(20), default="standard", nullable=False)
+    document_type: Mapped[str] = mapped_column(String(80), default="document", nullable=False)
     status: Mapped[str] = mapped_column(String(40), default="ready", nullable=False)
     overview: Mapped[str] = mapped_column(Text, nullable=False)
     summary: Mapped[str] = mapped_column(Text, nullable=False)
@@ -84,7 +87,7 @@ class DocumentInsight(Base, TimestampMixin):
     notice: Mapped[str | None] = mapped_column(Text)
     llm_configured: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
-    document: Mapped[Document] = relationship(back_populates="insight")
+    document: Mapped[Document] = relationship(back_populates="insights")
 
 
 class Conversation(Base, TimestampMixin):

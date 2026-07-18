@@ -129,9 +129,10 @@ DocuMind uses RAG, ChromaDB, and OpenAI for document question answering.
     payload = response.json()
     assert payload["document_id"] == document["id"]
     assert payload["status"] == "ready"
-    assert "resume" in payload["overview"].lower()
+    assert payload["document_type"] == "resume"
+    assert payload["summary_length"] == "standard"
     assert "Python" in payload["key_entities"]
-    assert "Professional Summary" in payload["main_sections"]
+    assert any(section["title"] == "Professional Summary" for section in payload["main_sections"])
     assert any("backend technologies" in question for question in payload["suggested_questions"])
     assert payload["sources"]
 
@@ -147,7 +148,7 @@ def test_document_explanation_reports_missing_llm_key(client, auth_headers):
 
     assert response.status_code == 200
     assert response.json()["llm_configured"] is False
-    assert "LLM API key" in response.json()["notice"]
+    assert "Basic summary generated without an LLM" in response.json()["notice"]
 
 
 def test_document_explanation_authorization(client, auth_headers):
@@ -162,7 +163,7 @@ def test_document_explanation_authorization(client, auth_headers):
 def test_explanation_flow_supports_txt_docx_and_pdf(client, auth_headers):
     cases = [
         ("resume.txt", BytesIO(b"Professional Summary\nPython FastAPI engineer.\n\nProjects\nDocuMind RAG assistant."), "text/plain", "resume"),
-        ("guide.docx", docx_bytes("User Guide\nInstall the healthcare portal.\nTroubleshooting\nReset login credentials."), "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "guide"),
+        ("guide.docx", docx_bytes("User Guide\nInstall the healthcare portal.\nTroubleshooting\nReset login credentials."), "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "technical document"),
         ("resume.pdf", BytesIO(simple_pdf_bytes("Resume Professional Summary Python FastAPI Projects DocuMind")), "application/pdf", "resume"),
         ("policy.pdf", BytesIO(simple_pdf_bytes("Policy Page One Remote work requires approval. Policy Page Two Compliance dates are listed.")), "application/pdf", "policy"),
     ]
@@ -179,5 +180,43 @@ def test_explanation_flow_supports_txt_docx_and_pdf(client, auth_headers):
 
         insight = client.post(f"/api/documents/{document['id']}/explain", headers=auth_headers)
         assert insight.status_code == 200
-        assert expected_kind in insight.json()["overview"].lower()
+        assert insight.json()["document_type"] == expected_kind
         assert insight.json()["suggested_questions"]
+
+
+def test_summary_is_short_deduplicated_and_length_cached(client, auth_headers):
+    repeated_paragraph = (
+        "Remote work policy requires manager approval before employees work away from the office. "
+        "Employees must protect customer data and use approved devices during remote work. "
+        "Teams review exceptions every quarter and document decisions for compliance."
+    )
+    source_text = "\n\n".join([repeated_paragraph] * 12)
+    document = upload_txt(client, auth_headers, name="remote-policy.txt", text=source_text).json()["document"]
+
+    brief = client.post(f"/api/documents/{document['id']}/explain?summary_length=brief", headers=auth_headers).json()
+    detailed = client.post(f"/api/documents/{document['id']}/explain?summary_length=detailed", headers=auth_headers).json()
+
+    assert len(brief["summary"].split()) <= 80
+    assert len(detailed["summary"].split()) <= 400
+    assert len(brief["summary"].split()) < len(source_text.split()) / 4
+    assert repeated_paragraph not in brief["summary"]
+    assert brief["summary"].count("Remote work policy requires manager approval") <= 1
+    assert all(len(point.split()) <= 24 for point in brief["key_points"])
+    assert brief["id"] != detailed["id"]
+
+    cached_brief = client.get(f"/api/documents/{document['id']}/insight?summary_length=brief", headers=auth_headers).json()
+    assert cached_brief["id"] == brief["id"]
+
+
+def test_supported_document_types_get_relevant_questions(client, auth_headers):
+    cases = [
+        ("research.txt", "Abstract\nThis research paper studies retrieval quality. Methodology compares chunking settings. Findings show citations improve review.", "research paper", "method"),
+        ("invoice.txt", "Invoice\nVendor Acme Cloud bills customer Northwind. Total amount due is 1200 dollars by March 2026.", "invoice", "vendor"),
+        ("meeting.txt", "Meeting Notes\nAttendees reviewed launch decisions. Action items were assigned to owners with deadlines.", "meeting notes", "action items"),
+        ("api.txt", "Technical Architecture\nThe setup guide documents API components, deployment configuration, and troubleshooting.", "technical document", "setup"),
+    ]
+    for filename, text, expected_type, question_term in cases:
+        document = upload_txt(client, auth_headers, name=filename, text=text).json()["document"]
+        payload = client.get(f"/api/documents/{document['id']}/insight", headers=auth_headers).json()
+        assert payload["document_type"] == expected_type
+        assert any(question_term in question.lower() for question in payload["suggested_questions"])

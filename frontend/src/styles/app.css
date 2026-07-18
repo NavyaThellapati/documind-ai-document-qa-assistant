@@ -196,8 +196,13 @@ small { color: var(--muted); }
 .insight-stack { display: grid; gap: .75rem; line-height: 1.7; }
 .insight-stack p { margin: 0; }
 .insight-stack ul { margin-top: 0; padding-left: 1.35rem; }
+.summary-controls { display: flex; align-items: end; gap: .75rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.summary-controls label { display: grid; gap: .3rem; color: var(--muted); min-width: 180px; }
 .tag-cloud { display: flex; flex-wrap: wrap; gap: .5rem; }
 .tag-cloud span { border: 1px solid var(--border); background: var(--panel-strong); border-radius: 999px; padding: .38rem .65rem; color: var(--text); }
+.section-list { display: grid; gap: .75rem; }
+.section-list article { background: var(--panel-strong); border: 1px solid var(--border); border-radius: 10px; padding: .85rem; }
+.section-list p { margin: .25rem 0 0; color: var(--muted); line-height: 1.5; }
 .pdf-frame { width: 100%; min-height: 620px; border: 1px solid var(--border); border-radius: 12px; background: var(--panel-strong); }
 .formatted-text { max-height: none; font-size: .96rem; line-height: 1.7; }
 .chunk-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: .9rem; }

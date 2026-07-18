@@ -141,18 +141,28 @@ def preview_document(document_id: str, db: Session = Depends(get_db), current_us
 
 
 @router.get("/{document_id}/insight", response_model=DocumentInsightResponse)
-def get_document_insight(document_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_document_insight(
+    document_id: str,
+    summary_length: str = Query(default="standard", pattern="^(brief|standard|detailed)$"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     document = get_owned_document(db, current_user, document_id)
     try:
-        return get_or_create_document_insight(db, document)
+        return get_or_create_document_insight(db, document, summary_length=summary_length)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
 
 @router.post("/{document_id}/explain", response_model=DocumentInsightResponse)
-def explain_document(document_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def explain_document(
+    document_id: str,
+    summary_length: str = Query(default="standard", pattern="^(brief|standard|detailed)$"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     document = get_owned_document(db, current_user, document_id)
     try:
-        return get_or_create_document_insight(db, document, force=True)
+        return get_or_create_document_insight(db, document, force=True, summary_length=summary_length)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc

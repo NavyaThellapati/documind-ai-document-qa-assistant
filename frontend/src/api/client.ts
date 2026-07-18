@@ -50,11 +50,13 @@ export type DocumentPreview = {
 export type DocumentInsight = {
   id: string;
   document_id: string;
+  summary_length: "brief" | "standard" | "detailed";
+  document_type: string;
   status: string;
   overview: string;
   summary: string;
   key_points: string[];
-  main_sections: string[];
+  main_sections: Array<{ title: string; description: string }>;
   key_entities: string[];
   suggested_questions: string[];
   sources: Array<{ page_number?: number | null; chunk_number: number; excerpt: string }>;
@@ -139,8 +141,8 @@ export const api = {
   reprocessBackground: (id: string) => request<DocumentItem>(`/documents/${id}/reprocess/background`, { method: "POST" }),
   searchDocument: (id: string, query: string) => request<{ query: string; results: Array<{ page_number?: number | null; excerpt: string; highlighted_excerpt?: string | null }> }>(`/documents/${id}/search?query=${encodeURIComponent(query)}`),
   previewDocument: (id: string) => request<DocumentPreview>(`/documents/${id}/preview`),
-  documentInsight: (id: string) => request<DocumentInsight>(`/documents/${id}/insight`),
-  explainDocument: (id: string) => request<DocumentInsight>(`/documents/${id}/explain`, { method: "POST" }),
+  documentInsight: (id: string, summaryLength = "standard") => request<DocumentInsight>(`/documents/${id}/insight?summary_length=${encodeURIComponent(summaryLength)}`),
+  explainDocument: (id: string, summaryLength = "standard") => request<DocumentInsight>(`/documents/${id}/explain?summary_length=${encodeURIComponent(summaryLength)}`, { method: "POST" }),
   async downloadDocument(id: string, filename: string) {
     const token = localStorage.getItem("documind_token");
     const response = await fetch(`${API_URL}/documents/${id}/download`, {

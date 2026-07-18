@@ -46,15 +46,21 @@ vi.mock("../api/client", () => ({
     documentInsight: () => Promise.resolve({
       id: "insight-1",
       document_id: "doc-1",
+      summary_length: "standard",
+      document_type: "resume",
       status: "ready",
-      overview: "This appears to be a resume.",
-      summary: "Professional summary with complete opening text.",
+      overview: "Resume covering AI document workflow experience.",
+      summary: "The resume summarizes AI document workflow experience, backend skills, and project work without reproducing the source text.",
       key_points: ["Built AI document workflows with citations"],
-      main_sections: ["Professional Summary", "Experience", "Projects"],
+      main_sections: [
+        { title: "Professional Summary", description: "Introduces the candidate's AI document workflow background." },
+        { title: "Experience", description: "Highlights relevant implementation work." },
+        { title: "Projects", description: "Covers document Q&A projects." },
+      ],
       key_entities: ["Python", "FastAPI"],
       suggested_questions: ["What backend technologies does this candidate use?"],
       sources: [{ page_number: 1, chunk_number: 1, excerpt: "Professional summary" }],
-      notice: "AI summarization requires an LLM API key.",
+      notice: "Basic summary generated without an LLM.",
       llm_configured: false,
       created_at: new Date("2026-01-01T00:00:00.000Z").toISOString(),
       updated_at: new Date("2026-01-01T00:00:00.000Z").toISOString(),
@@ -77,7 +83,9 @@ describe("DocumentDetails", () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText("This appears to be a resume.")).toBeInTheDocument();
+    expect(await screen.findByText("Resume covering AI document workflow experience.")).toBeInTheDocument();
+    expect(screen.getByText("resume")).toBeInTheDocument();
+    expect(screen.queryByText("Final sentence must remain visible when expanded.")).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole("tab", { name: /chunks/i }));
 
     const chunkText = await screen.findByTestId("chunk-text-1");

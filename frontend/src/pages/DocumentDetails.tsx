@@ -7,6 +7,7 @@ import { api, DocumentInsight, DocumentItem, DocumentPreview, Source } from "../
 import { useToast } from "../contexts/ToastContext";
 
 type Tab = "overview" | "ask" | "preview" | "chunks" | "search";
+type SummaryLength = "brief" | "standard" | "detailed";
 
 function wordCount(text: string) {
   return text.trim().split(/\s+/).filter(Boolean).length;
@@ -71,6 +72,7 @@ export function DocumentDetails() {
   const [results, setResults] = useState<Array<{ page_number?: number | null; excerpt: string; highlighted_excerpt?: string | null }>>([]);
   const [pdfUrl, setPdfUrl] = useState("");
   const [insightLoading, setInsightLoading] = useState(false);
+  const [summaryLength, setSummaryLength] = useState<SummaryLength>("standard");
   const [askQuestion, setAskQuestion] = useState("");
   const [askLoading, setAskLoading] = useState(false);
   const [askAnswer, setAskAnswer] = useState<{ answer: string; sources: Source[] } | null>(null);
@@ -96,8 +98,8 @@ export function DocumentDetails() {
     setError("");
     api.document(id).then(setDocument).catch((err) => setError(err.message));
     api.previewDocument(id).then(setPreview).catch(() => undefined);
-    api.documentInsight(id).then(setInsight).catch(() => undefined);
-  }, [id]);
+    api.documentInsight(id, summaryLength).then(setInsight).catch(() => undefined);
+  }, [id, summaryLength]);
   useEffect(() => {
     if (!id || document?.file_type !== "pdf") return;
     let currentUrl = "";
@@ -120,7 +122,7 @@ export function DocumentDetails() {
     setInsightLoading(true);
     setError("");
     try {
-      setInsight(await api.explainDocument(id));
+      setInsight(await api.explainDocument(id, summaryLength));
       setActiveTab("overview");
       notify("Document explanation ready.", "success");
     } catch (err) {
@@ -221,12 +223,16 @@ export function DocumentDetails() {
         <div className="document-layout">
           <main className="document-main">
             <section className="panel">
-              <div className="section-heading"><div><h2>Overview</h2><p>Grounded explanation generated from the uploaded document text.</p></div><Sparkles size={20} /></div>
-              {insightLoading ? <div className="skeleton" /> : insight ? <div className="insight-stack"><p>{insight.overview}</p><h3>Concise summary</h3><p>{insight.summary}</p><h3>Key points</h3><ul>{insight.key_points.map((point) => <li key={point}>{point}</li>)}</ul></div> : <div className="empty">Click Explain this document to generate a grounded overview.</div>}
+              <div className="section-heading"><div><h2>Overview</h2><p>Grounded summary generated from the uploaded document text without showing raw chunks.</p></div><Sparkles size={20} /></div>
+              <div className="summary-controls">
+                <label>Summary length<select value={summaryLength} onChange={(event) => setSummaryLength(event.target.value as SummaryLength)}><option value="brief">Brief</option><option value="standard">Standard</option><option value="detailed">Detailed</option></select></label>
+                <button type="button" className="button secondary" onClick={explain} disabled={!processed || insightLoading}><RotateCw size={16} /> Regenerate summary</button>
+              </div>
+              {insightLoading ? <div className="skeleton" /> : insight ? <div className="insight-stack"><div className="tag-cloud"><span>{insight.document_type}</span><span>{insight.summary_length}</span></div><h3>One-sentence overview</h3><p>{insight.overview}</p><h3>Concise summary</h3><p>{insight.summary}</p><h3>Key points</h3><ul>{insight.key_points.map((point) => <li key={point}>{point}</li>)}</ul></div> : <div className="empty">Click Explain this document to generate a grounded overview.</div>}
             </section>
             <section className="panel">
               <h2>Main sections</h2>
-              {insight?.main_sections.length ? <div className="tag-cloud">{insight.main_sections.map((section) => <span key={section}>{section}</span>)}</div> : <div className="empty compact-empty">Detected sections will appear here.</div>}
+              {insight?.main_sections.length ? <div className="section-list">{insight.main_sections.map((section) => <article key={section.title}><strong>{section.title}</strong><p>{section.description}</p></article>)}</div> : <div className="empty compact-empty">Detected sections will appear here.</div>}
             </section>
           </main>
           <aside className="document-aside">

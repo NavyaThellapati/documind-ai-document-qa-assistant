@@ -84,14 +84,21 @@ class DocumentInsightSource(BaseModel):
     excerpt: str
 
 
+class DocumentInsightSection(BaseModel):
+    title: str
+    description: str
+
+
 class DocumentInsightResponse(BaseModel):
     id: str
     document_id: str
+    summary_length: str
+    document_type: str
     status: str
     overview: str
     summary: str
     key_points: list[str] = Field(default_factory=list)
-    main_sections: list[str] = Field(default_factory=list)
+    main_sections: list[DocumentInsightSection] = Field(default_factory=list)
     key_entities: list[str] = Field(default_factory=list)
     suggested_questions: list[str] = Field(default_factory=list)
     sources: list[DocumentInsightSource] = Field(default_factory=list)
