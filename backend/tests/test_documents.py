@@ -131,7 +131,7 @@ DocuMind uses RAG, ChromaDB, and OpenAI for document question answering.
     assert payload["status"] == "ready"
     assert payload["document_type"] == "resume"
     assert payload["summary_length"] == "standard"
-    assert "Python" in payload["key_entities"]
+    assert any(entity["name"] == "Python" and entity["type"] == "technology" for entity in payload["key_entities"])
     assert any(section["title"] == "Professional Summary" for section in payload["main_sections"])
     assert any("backend technologies" in question for question in payload["suggested_questions"])
     assert payload["sources"]
@@ -139,6 +139,10 @@ DocuMind uses RAG, ChromaDB, and OpenAI for document question answering.
     cached = client.get(f"/api/documents/{document['id']}/insight", headers=auth_headers)
     assert cached.status_code == 200
     assert cached.json()["id"] == payload["id"]
+
+    summary_alias = client.get(f"/api/documents/{document['id']}/summary", headers=auth_headers)
+    assert summary_alias.status_code == 200
+    assert summary_alias.json()["id"] == payload["id"]
 
 
 def test_document_explanation_reports_missing_llm_key(client, auth_headers):
@@ -206,6 +210,10 @@ def test_summary_is_short_deduplicated_and_length_cached(client, auth_headers):
 
     cached_brief = client.get(f"/api/documents/{document['id']}/insight?summary_length=brief", headers=auth_headers).json()
     assert cached_brief["id"] == brief["id"]
+
+    regenerated = client.post(f"/api/documents/{document['id']}/summary/regenerate?summary_length=brief", headers=auth_headers).json()
+    assert regenerated["summary_length"] == "brief"
+    assert regenerated["id"] == brief["id"]
 
 
 def test_supported_document_types_get_relevant_questions(client, auth_headers):

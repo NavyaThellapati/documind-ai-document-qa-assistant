@@ -108,6 +108,13 @@ def split_sections(sections: list[TextSection], chunk_size: int, chunk_overlap: 
 
     def choose_next_start(text: str, previous_end: int) -> int:
         start = max(0, previous_end - chunk_overlap)
+        paragraph = text.find("\n\n", start, previous_end)
+        sentence_candidates = [text.find(marker, start, previous_end) for marker in (". ", "! ", "? ")]
+        sentence_candidates = [candidate + 2 for candidate in sentence_candidates if candidate != -1]
+        if paragraph != -1:
+            start = paragraph + 2
+        elif sentence_candidates:
+            start = min(sentence_candidates)
         while start > 0 and start < len(text) and _is_word_character(text[start - 1]) and _is_word_character(text[start]):
             start += 1
         while start < len(text) and text[start].isspace():

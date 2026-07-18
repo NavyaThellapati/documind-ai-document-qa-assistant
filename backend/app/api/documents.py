@@ -154,6 +154,16 @@ def get_document_insight(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
 
+@router.get("/{document_id}/summary", response_model=DocumentInsightResponse)
+def get_document_summary(
+    document_id: str,
+    summary_length: str = Query(default="standard", pattern="^(brief|standard|detailed)$"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return get_document_insight(document_id, summary_length, db, current_user)
+
+
 @router.post("/{document_id}/explain", response_model=DocumentInsightResponse)
 def explain_document(
     document_id: str,
@@ -166,3 +176,23 @@ def explain_document(
         return get_or_create_document_insight(db, document, force=True, summary_length=summary_length)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+
+@router.post("/{document_id}/summary", response_model=DocumentInsightResponse)
+def generate_document_summary(
+    document_id: str,
+    summary_length: str = Query(default="standard", pattern="^(brief|standard|detailed)$"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return get_document_insight(document_id, summary_length, db, current_user)
+
+
+@router.post("/{document_id}/summary/regenerate", response_model=DocumentInsightResponse)
+def regenerate_document_summary(
+    document_id: str,
+    summary_length: str = Query(default="standard", pattern="^(brief|standard|detailed)$"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return explain_document(document_id, summary_length, db, current_user)

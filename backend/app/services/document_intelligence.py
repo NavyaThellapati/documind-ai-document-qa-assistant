@@ -63,12 +63,18 @@ class SummarySection(BaseModel):
     description: str
 
 
+class SummaryEntity(BaseModel):
+    name: str
+    type: str
+
+
 class StructuredDocumentSummary(BaseModel):
     document_type: str
     overview: str = Field(max_length=320)
     summary: str
     key_points: list[str] = Field(min_length=1, max_length=7)
     sections: list[SummarySection] = Field(default_factory=list)
+    entities: list[SummaryEntity] = Field(default_factory=list)
     suggested_questions: list[str] = Field(min_length=1, max_length=6)
 
     @field_validator("overview")
@@ -230,17 +236,23 @@ def _extract_sections(sections: list[TextSection], sentences: list[str], documen
     return output
 
 
-def _key_entities(text: str) -> list[str]:
-    entities: list[str] = []
+def _append_entity(entities: list[SummaryEntity], name: str, entity_type: str) -> None:
+    if not any(entity.name.lower() == name.lower() for entity in entities):
+        entities.append(SummaryEntity(name=name, type=entity_type))
+
+
+def _key_entities(text: str) -> list[SummaryEntity]:
+    entities: list[SummaryEntity] = []
     for term in TECH_TERMS:
-        if re.search(rf"\b{re.escape(term)}\b", text, flags=re.IGNORECASE) and term not in entities:
-            entities.append(term)
+        if re.search(rf"\b{re.escape(term)}\b", text, flags=re.IGNORECASE):
+            _append_entity(entities, term, "technology")
     for match in re.findall(r"\b(?:19|20)\d{2}\b|\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\s+\d{4}\b", text):
-        if match not in entities:
-            entities.append(match)
+        _append_entity(entities, match, "date")
+    for match in re.findall(r"\$\s?\d[\d,]*(?:\.\d{2})?|\b\d[\d,]*(?:\.\d{2})?\s?(?:USD|dollars)\b", text, flags=re.IGNORECASE):
+        _append_entity(entities, match, "amount")
     for match in re.findall(r"\b[A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z&]+){1,3}\b", text):
-        if match not in entities and len(match) <= 50:
-            entities.append(match)
+        if len(match) <= 50:
+            _append_entity(entities, match, "topic")
     return entities[:18]
 
 
@@ -256,7 +268,7 @@ def _key_points(sentences: list[str], document_type: str, summary: str) -> list[
     return points[:7] or [_limit_words(summary, 24)]
 
 
-def _suggested_questions(document_type: str, sections: list[SummarySection], entities: list[str], filename: str) -> list[str]:
+def _suggested_questions(document_type: str, sections: list[SummarySection], entities: list[SummaryEntity], filename: str) -> list[str]:
     questions_by_type = {
         "resume": [
             "What backend technologies does this candidate use?",
@@ -277,7 +289,7 @@ def _suggested_questions(document_type: str, sections: list[SummarySection], ent
     if sections:
         questions.append(f"What does the {sections[0].title} section say?")
     if entities:
-        questions.append(f"What does the document say about {entities[0]}?")
+        questions.append(f"What does the document say about {entities[0].name}?")
     questions.append(f"What should I know first about {filename}?")
     deduped = []
     for question in questions:
@@ -304,6 +316,7 @@ def build_document_insight(document: Document, sections: list[TextSection], chun
         summary=summary,
         key_points=_key_points(sentences, document_type, summary)[:7],
         sections=section_models,
+        entities=entities,
         suggested_questions=_suggested_questions(document_type, section_models, entities, document.original_filename),
     )
 
@@ -315,7 +328,7 @@ def build_document_insight(document: Document, sections: list[TextSection], chun
         "summary": structured.summary,
         "key_points": structured.key_points,
         "main_sections": [section.model_dump() for section in structured.sections],
-        "key_entities": entities,
+        "key_entities": [entity.model_dump() for entity in structured.entities],
         "suggested_questions": structured.suggested_questions,
         "sources": _source_refs(chunks),
         "notice": None if get_settings().openai_api_key or get_settings().llm_provider.lower() == "llama" else MISSING_LLM_NOTICE,

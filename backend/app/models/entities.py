@@ -81,7 +81,7 @@ class DocumentInsight(Base, TimestampMixin):
     summary: Mapped[str] = mapped_column(Text, nullable=False)
     key_points: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
     main_sections: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
-    key_entities: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
+    key_entities: Mapped[list[dict]] = mapped_column(JSON, default=list, nullable=False)
     suggested_questions: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
     sources: Mapped[list[dict]] = mapped_column(JSON, default=list, nullable=False)
     notice: Mapped[str | None] = mapped_column(Text)

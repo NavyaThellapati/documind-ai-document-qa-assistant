@@ -72,6 +72,7 @@ export function DocumentDetails() {
   const [results, setResults] = useState<Array<{ page_number?: number | null; excerpt: string; highlighted_excerpt?: string | null }>>([]);
   const [pdfUrl, setPdfUrl] = useState("");
   const [insightLoading, setInsightLoading] = useState(false);
+  const [summaryError, setSummaryError] = useState("");
   const [summaryLength, setSummaryLength] = useState<SummaryLength>("standard");
   const [askQuestion, setAskQuestion] = useState("");
   const [askLoading, setAskLoading] = useState(false);
@@ -96,9 +97,17 @@ export function DocumentDetails() {
   useEffect(() => {
     if (!id) return;
     setError("");
+    setSummaryError("");
+    setInsightLoading(true);
     api.document(id).then(setDocument).catch((err) => setError(err.message));
     api.previewDocument(id).then(setPreview).catch(() => undefined);
-    api.documentInsight(id, summaryLength).then(setInsight).catch(() => undefined);
+    api.documentInsight(id, summaryLength)
+      .then(setInsight)
+      .catch((err) => {
+        setInsight(null);
+        setSummaryError(err instanceof Error ? err.message : "Summary unavailable.");
+      })
+      .finally(() => setInsightLoading(false));
   }, [id, summaryLength]);
   useEffect(() => {
     if (!id || document?.file_type !== "pdf") return;
@@ -121,12 +130,13 @@ export function DocumentDetails() {
     if (!id) return;
     setInsightLoading(true);
     setError("");
+    setSummaryError("");
     try {
       setInsight(await api.explainDocument(id, summaryLength));
       setActiveTab("overview");
       notify("Document explanation ready.", "success");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Summary unavailable.");
+      setSummaryError(err instanceof Error ? err.message : "Summary unavailable.");
     } finally {
       setInsightLoading(false);
     }
@@ -228,7 +238,8 @@ export function DocumentDetails() {
                 <label>Summary length<select value={summaryLength} onChange={(event) => setSummaryLength(event.target.value as SummaryLength)}><option value="brief">Brief</option><option value="standard">Standard</option><option value="detailed">Detailed</option></select></label>
                 <button type="button" className="button secondary" onClick={explain} disabled={!processed || insightLoading}><RotateCw size={16} /> Regenerate summary</button>
               </div>
-              {insightLoading ? <div className="skeleton" /> : insight ? <div className="insight-stack"><div className="tag-cloud"><span>{insight.document_type}</span><span>{insight.summary_length}</span></div><h3>One-sentence overview</h3><p>{insight.overview}</p><h3>Concise summary</h3><p>{insight.summary}</p><h3>Key points</h3><ul>{insight.key_points.map((point) => <li key={point}>{point}</li>)}</ul></div> : <div className="empty">Click Explain this document to generate a grounded overview.</div>}
+              {summaryError && <div className="error">Summary unavailable: {summaryError} <button type="button" className="link-button" onClick={explain}>Retry summary generation</button></div>}
+              {insightLoading ? <div className="skeleton" aria-label="Generating explanation" /> : insight ? <div className="insight-stack"><div className="tag-cloud"><span>{insight.document_type}</span><span>{insight.summary_length}</span></div><h3>One-sentence overview</h3><p>{insight.overview}</p><h3>Concise summary</h3><p>{insight.summary}</p><h3>Key points</h3><ul>{insight.key_points.map((point) => <li key={point}>{point}</li>)}</ul></div> : !summaryError && <div className="empty">Click Explain this document to generate a grounded overview.</div>}
             </section>
             <section className="panel">
               <h2>Main sections</h2>
@@ -238,7 +249,7 @@ export function DocumentDetails() {
           <aside className="document-aside">
             <section className="panel">
               <h2>Key entities and topics</h2>
-              {insight?.key_entities.length ? <div className="tag-cloud">{insight.key_entities.map((entity) => <span key={entity}>{entity}</span>)}</div> : <div className="empty compact-empty">Important topics will appear after explanation.</div>}
+              {insight?.key_entities.length ? <div className="tag-cloud">{insight.key_entities.map((entity) => <span key={`${entity.type}-${entity.name}`}>{entity.name} · {entity.type}</span>)}</div> : <div className="empty compact-empty">Important topics will appear after explanation.</div>}
             </section>
             <section className="panel">
               <h2>Suggested questions</h2>

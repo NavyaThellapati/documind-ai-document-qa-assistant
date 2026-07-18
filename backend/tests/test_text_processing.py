@@ -35,6 +35,23 @@ def test_chunking_preserves_paragraphs_and_bullets():
     assert chunks[0].text == text
 
 
+def test_chunk_overlap_prefers_sentence_starts():
+    text = " ".join(
+        [
+            "First complete sentence explains the policy purpose.",
+            "Second complete sentence describes who must follow the policy.",
+            "Third complete sentence lists approval and review actions.",
+        ]
+        * 16
+    )
+    chunks = split_sections([TextSection(text=text, page_number=1)], chunk_size=190, chunk_overlap=70)
+
+    assert len(chunks) > 1
+    for chunk in chunks[1:]:
+        assert chunk.text[0].isalnum()
+        assert not chunk.text.startswith((",", ";", "and ", "or "))
+
+
 def test_hashing_embedding_mode_is_deterministic():
     service = EmbeddingService("hashing")
 

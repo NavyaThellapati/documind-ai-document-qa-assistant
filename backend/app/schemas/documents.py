@@ -89,6 +89,11 @@ class DocumentInsightSection(BaseModel):
     description: str
 
 
+class DocumentInsightEntity(BaseModel):
+    name: str
+    type: str
+
+
 class DocumentInsightResponse(BaseModel):
     id: str
     document_id: str
@@ -99,7 +104,7 @@ class DocumentInsightResponse(BaseModel):
     summary: str
     key_points: list[str] = Field(default_factory=list)
     main_sections: list[DocumentInsightSection] = Field(default_factory=list)
-    key_entities: list[str] = Field(default_factory=list)
+    key_entities: list[DocumentInsightEntity] = Field(default_factory=list)
     suggested_questions: list[str] = Field(default_factory=list)
     sources: list[DocumentInsightSource] = Field(default_factory=list)
     notice: str | None = None
