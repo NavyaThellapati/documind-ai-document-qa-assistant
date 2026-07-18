@@ -10,10 +10,17 @@ function wordCount(text: string) {
   return text.trim().split(/\s+/).filter(Boolean).length;
 }
 
+function collapsedChunkText(text: string, limit = 420) {
+  if (text.length <= limit) return text;
+  const boundary = text.lastIndexOf(" ", limit);
+  const end = boundary > Math.floor(limit * 0.6) ? boundary : limit;
+  return `${text.slice(0, end).trimEnd()}...`;
+}
+
 function ChunkCard({ chunk, active }: { chunk: DocumentPreview["chunks"][number]; active: boolean }) {
   const [expanded, setExpanded] = useState(active);
   const words = wordCount(chunk.text);
-  const displayText = expanded ? chunk.text : `${chunk.text.slice(0, 420)}${chunk.text.length > 420 ? "..." : ""}`;
+  const displayText = expanded ? chunk.text : collapsedChunkText(chunk.text);
   return (
     <article className={`chunk-card ${active ? "highlighted" : ""}`} id={`chunk-${chunk.chunk_number}`}>
       <div className="chunk-meta">
@@ -22,7 +29,7 @@ function ChunkCard({ chunk, active }: { chunk: DocumentPreview["chunks"][number]
         <span>{words} words</span>
         <span>{Math.ceil(words * 1.3)} tokens</span>
       </div>
-      <p>{displayText}</p>
+      <pre className="chunk-text" data-testid={`chunk-text-${chunk.chunk_number}`}>{displayText}</pre>
       <div className="chunk-actions">
         <button type="button" className="link-button" onClick={() => setExpanded((current) => !current)}>{expanded ? "Collapse" : "Expand"}</button>
         <button type="button" className="link-button" onClick={() => navigator.clipboard.writeText(chunk.text)}><Copy size={14} /> Copy</button>

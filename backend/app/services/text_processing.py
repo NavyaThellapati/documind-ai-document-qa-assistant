@@ -20,6 +20,10 @@ class Chunk:
     chunk_number: int
 
 
+def _is_word_character(character: str) -> bool:
+    return bool(character) and (character.isalnum() or character == "_")
+
+
 def clean_text(text: str) -> str:
     text = text.replace("\x00", " ")
     text = re.sub(r"[ \t]+", " ", text)
@@ -78,6 +82,38 @@ def search_sections(sections: list[TextSection], query: str, max_results: int = 
 def split_sections(sections: list[TextSection], chunk_size: int, chunk_overlap: int) -> list[Chunk]:
     if chunk_overlap >= chunk_size:
         raise ValueError("Chunk overlap must be smaller than chunk size.")
+
+    def choose_chunk_end(text: str, start: int) -> int:
+        end = min(start + chunk_size, len(text))
+        if end >= len(text):
+            return len(text)
+
+        boundaries = [
+            text.rfind("\n\n", start, end),
+            text.rfind("\n", start, end),
+            text.rfind(". ", start, end),
+            text.rfind("! ", start, end),
+            text.rfind("? ", start, end),
+            text.rfind("; ", start, end),
+            text.rfind(": ", start, end),
+            text.rfind(" ", start, end),
+        ]
+        boundary = max(boundaries)
+        if boundary > start + max(120, chunk_size // 3):
+            end = boundary + 1
+
+        while end < len(text) and _is_word_character(text[end - 1]) and _is_word_character(text[end]):
+            end += 1
+        return end
+
+    def choose_next_start(text: str, previous_end: int) -> int:
+        start = max(0, previous_end - chunk_overlap)
+        while start > 0 and start < len(text) and _is_word_character(text[start - 1]) and _is_word_character(text[start]):
+            start += 1
+        while start < len(text) and text[start].isspace():
+            start += 1
+        return start
+
     chunks: list[Chunk] = []
     chunk_number = 1
     for section in sections:
@@ -86,16 +122,12 @@ def split_sections(sections: list[TextSection], chunk_size: int, chunk_overlap: 
             continue
         start = 0
         while start < len(text):
-            end = min(start + chunk_size, len(text))
-            if end < len(text):
-                boundary = max(text.rfind("\n", start, end), text.rfind(". ", start, end), text.rfind(" ", start, end))
-                if boundary > start + max(120, chunk_size // 3):
-                    end = boundary + 1
+            end = choose_chunk_end(text, start)
             chunk_text = clean_text(text[start:end])
             if chunk_text:
                 chunks.append(Chunk(text=chunk_text, page_number=section.page_number, chunk_number=chunk_number))
                 chunk_number += 1
             if end >= len(text):
                 break
-            start = max(0, end - chunk_overlap)
+            start = choose_next_start(text, end)
     return chunks
